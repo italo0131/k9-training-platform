@@ -1,0 +1,4 @@
+Projeto K9 Training Platform
+Inicio: este arquivo marca o comeco do repositorio.
+Objetivo: centralizar o desenvolvimento do SaaS de treinamento canino.
+Notas: use README.md para instrucoes completas.

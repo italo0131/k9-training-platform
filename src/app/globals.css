@@ -1,0 +1,107 @@
+@import "tailwindcss";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+  --accent: #22d3ee;
+  --accent-strong: #38bdf8;
+  --nav-bg: #020617;
+  --surface: rgba(255, 255, 255, 0.05);
+  --border: rgba(255, 255, 255, 0.1);
+  --root-surface: rgba(251, 146, 60, 0.08);
+  --root-border: rgba(251, 146, 60, 0.25);
+}
+
+body {
+  background: #020617;
+  color: #e2e8f0;
+}
+
+:root.root-mode {
+  --accent: #f97316;
+  --accent-strong: #fb923c;
+  --nav-bg: #0f0a04;
+  --surface: rgba(251, 146, 60, 0.08);
+  --border: rgba(251, 146, 60, 0.25);
+}
+
+.page-shell {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 24px 16px 40px;
+}
+
+@media (min-width: 768px) {
+  .page-shell {
+    padding: 32px 24px 48px;
+  }
+}
+
+.glass {
+  @apply border border-white/10 bg-white/5 backdrop-blur-lg shadow-2xl;
+}
+
+.app-nav {
+  background: var(--nav-bg);
+  border-color: var(--border);
+  transition: background 200ms ease, border-color 200ms ease;
+}
+
+.app-banner {
+  background: var(--surface);
+  border-color: var(--border);
+  transition: background 200ms ease, border-color 200ms ease;
+}
+
+@supports (padding: env(safe-area-inset-top)) {
+  .app-nav,
+  .app-banner {
+    padding-left: max(1rem, env(safe-area-inset-left));
+    padding-right: max(1rem, env(safe-area-inset-right));
+  }
+}
+
+.root-badge {
+  background: var(--accent);
+  color: #0f172a;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-weight: 700;
+  letter-spacing: 0.3em;
+}
+
+.root-pill {
+  background: var(--root-surface);
+  color: #fbbf24;
+  border: 1px solid var(--root-border);
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+}
+
+:where(a, button, [role="button"]) {
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: rgba(56, 189, 248, 0.25);
+}
+
+:where(input, select, textarea) {
+  touch-action: manipulation;
+}
+
+@media (pointer: coarse) {
+  :where(a, button, [role="button"], input, select, textarea) {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}
+
+:root.root-mode .app-bg {
+  background: radial-gradient(circle at 10% 20%, rgba(251, 146, 60, 0.2), transparent 30%),
+    radial-gradient(circle at 80% 10%, rgba(251, 191, 36, 0.2), transparent 30%),
+    radial-gradient(circle at 40% 80%, rgba(14, 116, 144, 0.15), transparent 30%);
+}

@@ -1,0 +1,15 @@
+export const routes = {
+  home: "/",
+  login: "/login",
+  register: "/register",
+  dashboard: "/dashboard",
+  profile: "/profile",
+  dogs: "/dogs",
+  newDog: "/dogs/new",
+  training: "/training",
+  calendar: "/calendar",
+  blog: "/blog",
+  forum: "/forum",
+  billing: "/billing",
+  admin: "/admin",
+}
