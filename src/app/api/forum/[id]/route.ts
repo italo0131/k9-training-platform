@@ -8,7 +8,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   const { session, error } = await requireApiUser()
   if (error) return error
 
-  if (!hasPremiumPlatformAccess(session.user.plan, session.user.role, session.user.planStatus)) {
+  if (!hasPremiumPlatformAccess(session.user.plan, session.user.role, session.user.planStatus, session.user.status)) {
     return NextResponse.json({ success: false, message: "Forum disponivel apenas nos planos pagos" }, { status: 403 })
   }
 

@@ -14,7 +14,7 @@ export async function POST(req: Request) {
   const { session, error } = await requireApiUser()
   if (error) return error
 
-  if (!hasPremiumPlatformAccess(session.user.plan, session.user.role, session.user.planStatus)) {
+  if (!hasPremiumPlatformAccess(session.user.plan, session.user.role, session.user.planStatus, session.user.status)) {
     return NextResponse.json({ success: false, message: "Conteudos exclusivos fazem parte dos planos pagos" }, { status: 403 })
   }
 

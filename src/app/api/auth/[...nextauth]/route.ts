@@ -32,6 +32,23 @@ function hashPassword(password: string) {
   return `scrypt:${salt}:${derived}`
 }
 
+function isDatabaseUnavailableError(error: unknown) {
+  if (!error || typeof error !== "object") return false
+
+  const candidate = error as { code?: string; name?: string; message?: string }
+  if (candidate.code === "P1001") return true
+  if (candidate.name === "PrismaClientInitializationError") return true
+  return String(candidate.message || "").includes("Can't reach database server")
+}
+
+function isSchemaMismatchError(error: unknown) {
+  if (!error || typeof error !== "object") return false
+
+  const candidate = error as { code?: string; message?: string }
+  if (candidate.code === "P2022") return true
+  return String(candidate.message || "").includes("does not exist in the current database")
+}
+
 export const authOptions: NextAuthOptions = {
   secret: process.env.NEXTAUTH_SECRET,
   session: { strategy: "jwt", maxAge: 60 * 60 * 24 * 7 }, // 7 dias
@@ -43,47 +60,59 @@ export const authOptions: NextAuthOptions = {
         password: { label: "Senha", type: "password" },
       },
       async authorize(credentials) {
-        if (!credentials?.email || !credentials?.password) return null
-        const email = normalizeEmail(credentials.email)
-        const loginRateLimit = takeRateLimit(`auth:login:${email}`, 10, 10 * 60 * 1000)
-        if (!loginRateLimit.allowed) {
-          throw new Error("TOO_MANY_ATTEMPTS")
-        }
-        const user = await prisma.user.findUnique({ where: { email } })
-        if (!user) return null
-        const passwordCheck = await verifyPassword(user.password, credentials.password)
-        if (!passwordCheck.valid) return null
-        if (user.status === "SUSPENDED") {
-          throw new Error("ACCOUNT_SUSPENDED")
-        }
-
-        if (passwordCheck.needsRehash) {
-          await prisma.user.update({
-            where: { id: user.id },
-            data: { password: hashPassword(credentials.password) },
-          })
-        }
-
-        if (user.twoFactorEnabled) {
-          const providedCode = (credentials as any).twoFactorCode
-          if (!providedCode) {
-            const code = await createVerificationCode(user.id, "2fa")
-            console.log(`[2fa] ${user.email} code=${code}`)
-            throw new Error("2FA_REQUIRED")
+        try {
+          if (!credentials?.email || !credentials?.password) return null
+          const email = normalizeEmail(credentials.email)
+          const loginRateLimit = takeRateLimit(`auth:login:${email}`, 10, 10 * 60 * 1000)
+          if (!loginRateLimit.allowed) {
+            throw new Error("TOO_MANY_ATTEMPTS")
           }
-          const valid2fa = await verifyCode(user.id, "2fa", providedCode)
-          if (!valid2fa) {
-            throw new Error("2FA_INVALID")
+          const user = await prisma.user.findUnique({ where: { email } })
+          if (!user) return null
+          const passwordCheck = await verifyPassword(user.password, credentials.password)
+          if (!passwordCheck.valid) return null
+          if (user.status === "SUSPENDED") {
+            throw new Error("ACCOUNT_SUSPENDED")
           }
-        }
 
-        return {
-          id: user.id,
-          name: user.name,
-          email: user.email,
-          role: user.role,
-          plan: user.plan,
-          planStatus: user.planStatus,
+          if (passwordCheck.needsRehash) {
+            await prisma.user.update({
+              where: { id: user.id },
+              data: { password: hashPassword(credentials.password) },
+            })
+          }
+
+          if (user.twoFactorEnabled) {
+            const providedCode = (credentials as any).twoFactorCode
+            if (!providedCode) {
+              const code = await createVerificationCode(user.id, "2fa")
+              console.log(`[2fa] ${user.email} code=${code}`)
+              throw new Error("2FA_REQUIRED")
+            }
+            const valid2fa = await verifyCode(user.id, "2fa", providedCode)
+            if (!valid2fa) {
+              throw new Error("2FA_INVALID")
+            }
+          }
+
+          return {
+            id: user.id,
+            name: user.name,
+            email: user.email,
+            role: user.role,
+            plan: user.plan,
+            planStatus: user.planStatus,
+          }
+        } catch (error) {
+          if (isSchemaMismatchError(error)) {
+            throw new Error("AUTH_SCHEMA_OUTDATED")
+          }
+
+          if (isDatabaseUnavailableError(error)) {
+            throw new Error("AUTH_DATABASE_UNAVAILABLE")
+          }
+
+          throw error
         }
       },
     }),

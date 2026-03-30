@@ -317,7 +317,7 @@ export default async function Home() {
           <p className="mt-3 text-slate-300">No Free voce estuda e organiza. Nos pagos voce libera tudo.</p>
         </div>
 
-        <div className="mt-8 grid gap-4 lg:grid-cols-3">
+        <div className="mt-8 grid gap-4 lg:grid-cols-2">
           <PlanCard
             name="Free"
             price="R$ 0"
@@ -327,21 +327,13 @@ export default async function Home() {
             cta="Entrar no Free"
           />
           <PlanCard
-            name="Starter"
-            price="R$ 79/mes"
-            description="Libera forum, conteudos, treinos, calendario e canais assinados."
-            items={["Tudo da plataforma", "Melhor custo para uso ativo", "Fluxo completo para cliente e profissional"]}
+            name="Standard"
+            price="R$ 29,90/mes"
+            description="Libera forum, conteudos, treinos, calendario, IA e canais assinados."
+            items={["Plano pago unico da plataforma", "Melhor custo para uso ativo", "Fluxo completo para cliente e profissional"]}
             href={isLoggedIn ? "/billing" : "/register"}
-            cta={isLoggedIn ? "Ver Starter" : "Entrar no Starter"}
+            cta={isLoggedIn ? "Ver Standard" : "Entrar no Standard"}
             highlight
-          />
-          <PlanCard
-            name="Pro"
-            price="R$ 149/mes"
-            description="Acesso total com presenca premium para quem quer operar com mais autoridade."
-            items={["Tudo da plataforma", "Mais forca comercial", "Pensado para profissionais e operacao forte"]}
-            href={isLoggedIn ? "/billing" : "/register"}
-            cta={isLoggedIn ? "Ver Pro" : "Entrar no Pro"}
           />
         </div>
       </section>

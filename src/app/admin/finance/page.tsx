@@ -30,7 +30,7 @@ export default async function AdminFinancePage({ searchParams }: Props) {
       <div className="max-w-6xl mx-auto space-y-6">
         <div>
           <h1 className="text-2xl font-semibold">Financeiro</h1>
-          <p className="text-sm text-gray-300">Eventos reais recebidos do Stripe.</p>
+          <p className="text-sm text-gray-300">Eventos reais recebidos do gateway de pagamento.</p>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">

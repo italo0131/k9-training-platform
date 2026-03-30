@@ -6,12 +6,15 @@ import { getRoleLabel, isAdminRole } from "@/lib/role"
 import ChannelSubscriptionButton from "@/app/components/ChannelSubscriptionButton"
 import SafeImage from "@/app/components/SafeImage"
 import {
+  getChannelSubscriptionStatusLabel,
   getAccountPlanLabel,
   getChannelContentAccessLabel,
   getChannelContentCategoryLabel,
   getChannelContentTypeLabel,
   getForumPostTypeLabel,
   hasPremiumPlatformAccess,
+  isChannelSubscriptionActive,
+  isChannelSubscriptionPending,
 } from "@/lib/platform"
 
 export default async function ForumChannelPage({ params }: { params: Promise<{ slug: string }> }) {
@@ -47,18 +50,33 @@ export default async function ForumChannelPage({ params }: { params: Promise<{ s
       </div>
     )
   }
+
+  const viewerSubscription = await prisma.channelSubscription.findUnique({
+    where: {
+      channelId_userId: {
+        channelId: channel.id,
+        userId: session.user.id!,
+      },
+    },
+  })
+
+  const isVetChannel = String(channel.owner.role || "").toUpperCase() === "VET"
   const isOwner = channel.ownerId === session.user.id || isAdminRole(session.user.role)
-  const hasPremiumAccess = hasPremiumPlatformAccess(session.user.plan, session.user.role, session.user.planStatus)
-  const isSubscribed = channel.subscriptions.some((item) => item.userId === session.user.id)
+  const hasPremiumAccess = hasPremiumPlatformAccess(session.user.plan, session.user.role, session.user.planStatus, session.user.status)
+  const viewerSubscriptionStatus = viewerSubscription?.status || null
+  const isSubscribed = isOwner || isChannelSubscriptionActive(viewerSubscriptionStatus)
+  const hasPendingCheckout = isChannelSubscriptionPending(viewerSubscriptionStatus)
   const canAccessPosts = isOwner || isSubscribed
   const previewThreads = channel.threads.slice(0, 4)
   const channelAccessMessage = isOwner
     ? "Voce administra este canal e enxerga toda a operacao."
     : isSubscribed
       ? "Canal ativo na sua conta. Feed interno, comentarios e modulos liberados."
-      : hasPremiumAccess
-        ? "Seu plano ja permite entrar. Falta apenas assinar este canal para abrir o feed interno."
-        : `Seu plano ${getAccountPlanLabel(session.user.plan)} libera a vitrine do canal, mas nao a area interna.`
+      : hasPendingCheckout
+        ? "Seu checkout deste canal esta em preparo. O acesso total entra depois da confirmacao financeira."
+        : hasPremiumAccess
+          ? "Seu plano ja permite entrar. Falta apenas assinar este canal para abrir o feed interno."
+          : `Seu plano ${getAccountPlanLabel(session.user.plan)} libera a vitrine do canal, mas nao a area interna.`
 
   return (
     <div className="min-h-[100svh] bg-[radial-gradient(circle_at_top,rgba(34,211,238,0.12),transparent_24%),linear-gradient(145deg,#020617,#0f172a_55%,#020617)] px-4 py-10 text-white sm:px-6">
@@ -71,6 +89,9 @@ export default async function ForumChannelPage({ params }: { params: Promise<{ s
           <div className="flex flex-wrap items-center gap-2">
             <span className="rounded-full bg-cyan-500/15 px-3 py-1 text-xs text-cyan-100">{channel.category}</span>
             <span className="rounded-full bg-emerald-500/15 px-3 py-1 text-xs text-emerald-100">{formatServiceMode(channel.serviceMode)}</span>
+            {viewerSubscriptionStatus ? (
+              <span className="rounded-full bg-white/10 px-3 py-1 text-xs text-gray-100">{getChannelSubscriptionStatusLabel(viewerSubscriptionStatus)}</span>
+            ) : null}
           </div>
           <h1 className="mt-4 text-3xl font-semibold">{channel.name}</h1>
           <p className="mt-3 max-w-3xl text-gray-300">{channel.description}</p>
@@ -81,7 +102,7 @@ export default async function ForumChannelPage({ params }: { params: Promise<{ s
             <Metric title="Local" value={formatChannelLocation(channel.city, channel.state)} />
             <Metric title="Assinatura" value={formatMoney(channel.subscriptionPrice) || "Gratuita"} />
             <Metric
-              title="Servicos"
+              title={isVetChannel ? "Consultas" : "Atendimentos"}
               value={`${formatMoney(channel.onlinePrice) || "Online sob consulta"} • ${formatMoney(channel.inPersonPrice) || "Presencial sob consulta"}`}
             />
           </div>
@@ -93,11 +114,22 @@ export default async function ForumChannelPage({ params }: { params: Promise<{ s
           <div className="mt-6 flex flex-wrap gap-3">
             <ChannelSubscriptionButton
               channelId={channel.id}
-              initialSubscribed={isSubscribed}
+              channelSlug={channel.slug}
+              channelName={channel.name}
+              subscriptionPrice={channel.subscriptionPrice}
+              initialStatus={viewerSubscriptionStatus}
               isOwner={isOwner}
               hasPremiumAccess={hasPremiumAccess}
               upgradeHref="/billing?locked=/forum"
             />
+            {(channel.subscriptionPrice || 0) > 0 && !isOwner && hasPremiumAccess ? (
+              <Link
+                href={`/forum/channels/${channel.slug}/assinar`}
+                className="rounded-2xl border border-fuchsia-300/20 bg-fuchsia-500/10 px-4 py-3 text-sm text-fuchsia-50 transition hover:bg-fuchsia-500/20"
+              >
+                Revisar assinatura
+              </Link>
+            ) : null}
             {(isOwner || isSubscribed) && (
               <Link
                 href={`/forum/new?channel=${channel.slug}`}
@@ -111,7 +143,7 @@ export default async function ForumChannelPage({ params }: { params: Promise<{ s
                 href={`/conteudos/new?channel=${channel.slug}`}
                 className="rounded-2xl border border-emerald-300/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-100"
               >
-                Novo modulo do curso
+                {isVetChannel ? "Nova orientacao do canal" : "Novo modulo do curso"}
               </Link>
             )}
             <Link

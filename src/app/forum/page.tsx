@@ -3,12 +3,18 @@ import Link from "next/link"
 import { requireUser } from "@/lib/auth"
 import { formatChannelLocation, formatDateRange, formatMoney } from "@/lib/community"
 import { getRoleLabel, isAdminRole, isApprovedProfessional, needsProfessionalApproval } from "@/lib/role"
-import { getForumPostTypeLabel, hasPremiumPlatformAccess } from "@/lib/platform"
+import {
+  getChannelSubscriptionStatusLabel,
+  getForumPostTypeLabel,
+  hasPremiumPlatformAccess,
+  isChannelSubscriptionActive,
+  isChannelSubscriptionPending,
+} from "@/lib/platform"
 import SafeImage from "@/app/components/SafeImage"
 
 export default async function ForumPage() {
   const session = await requireUser()
-  const hasPremiumAccess = hasPremiumPlatformAccess(session.user.plan, session.user.role, session.user.planStatus)
+  const hasPremiumAccess = hasPremiumPlatformAccess(session.user.plan, session.user.role, session.user.planStatus, session.user.status)
   const canCreateChannel = isApprovedProfessional(session.user.role, session.user.status)
   const isAdmin = isAdminRole(session.user.role)
   const professionalPending = needsProfessionalApproval(session.user.role, session.user.status)
@@ -20,12 +26,12 @@ export default async function ForumPage() {
       orderBy: [{ featured: "desc" }, { createdAt: "desc" }],
     }),
     prisma.channelSubscription.findMany({
-      where: { userId: session.user.id, status: "ACTIVE" },
-      select: { channelId: true },
+      where: { userId: session.user.id },
+      select: { channelId: true, status: true },
     }),
   ])
 
-  const subscribedChannelIds = new Set(subscriptions.map((item) => item.channelId))
+  const subscriptionByChannelId = new Map(subscriptions.map((item) => [item.channelId, item.status]))
   const threadWhere = isAdmin
     ? {}
     : {
@@ -91,7 +97,7 @@ export default async function ForumPage() {
               <h2 className="mt-3 text-2xl font-semibold text-amber-50">Seu plano atual libera a vitrine, nao o acesso interno.</h2>
               <p className="mt-3 text-sm leading-7 text-amber-50/90">
                 No Free voce conhece os profissionais, abre os canais e avalia o posicionamento de cada um. Para
-                comentar no forum, assinar canais e abrir o conteudo exclusivo, a plataforma pede Starter ou Pro.
+                comentar no forum, assinar canais e abrir o conteudo exclusivo, a plataforma pede o plano Standard.
               </p>
               <Link
                 href="/billing?locked=/forum"
@@ -112,40 +118,60 @@ export default async function ForumPage() {
             </div>
 
             <div className="mt-4 space-y-3">
-              {channels.map((channel) => (
-                <Link
-                  key={channel.id}
-                  href={`/forum/channels/${channel.slug}`}
-                  className="block rounded-2xl border border-white/10 bg-white/5 p-4 transition hover:bg-white/10"
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <p className="text-base font-semibold">{channel.name}</p>
-                      <p className="mt-1 text-xs text-slate-400">
-                        {channel.owner.name} • {getRoleLabel(channel.owner.role)}
+              {channels.map((channel) => {
+                const viewerSubscriptionStatus = subscriptionByChannelId.get(channel.id) || null
+                const isSubscribed = isChannelSubscriptionActive(viewerSubscriptionStatus)
+                const pendingCheckout = isChannelSubscriptionPending(viewerSubscriptionStatus)
+
+                return (
+                  <Link
+                    key={channel.id}
+                    href={`/forum/channels/${channel.slug}`}
+                    className="block rounded-2xl border border-white/10 bg-white/5 p-4 transition hover:bg-white/10"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-base font-semibold">{channel.name}</p>
+                        <p className="mt-1 text-xs text-slate-400">
+                          {channel.owner.name} • {getRoleLabel(channel.owner.role)}
+                        </p>
+                      </div>
+                      {viewerSubscriptionStatus ? (
+                        <span
+                          className={`rounded-full px-3 py-1 text-xs ${
+                            isSubscribed
+                              ? "bg-emerald-500/15 text-emerald-100"
+                              : pendingCheckout
+                                ? "bg-fuchsia-500/15 text-fuchsia-100"
+                                : "bg-white/10 text-gray-100"
+                          }`}
+                        >
+                          {getChannelSubscriptionStatusLabel(viewerSubscriptionStatus)}
+                        </span>
+                      ) : null}
+                    </div>
+                    <p className="mt-2 text-sm text-slate-300">{channel.description}</p>
+                    <div className="mt-3 grid gap-1 text-xs text-slate-400">
+                      <p>{formatChannelLocation(channel.city, channel.state)}</p>
+                      <p>
+                        {formatMoney(channel.subscriptionPrice) || "Canal gratuito"} • {channel._count.subscriptions} assinantes
+                      </p>
+                      <p>{channel._count.contents} modulos • {channel._count.threads} posts</p>
+                      <p className="text-cyan-100/80">
+                        {isSubscribed
+                          ? "Canal ativo na sua conta."
+                          : pendingCheckout
+                            ? "Checkout em preparo. Falta confirmacao financeira."
+                            : hasPremiumAccess
+                              ? (channel.subscriptionPrice || 0) > 0
+                                ? "Abra o canal para revisar a assinatura do canal."
+                                : "Abra o canal e escolha se quer entrar."
+                              : "Abra o canal para conhecer a vitrine antes do upgrade."}
                       </p>
                     </div>
-                    {subscribedChannelIds.has(channel.id) && (
-                      <span className="rounded-full bg-emerald-500/15 px-3 py-1 text-xs text-emerald-100">Assinado</span>
-                    )}
-                  </div>
-                  <p className="mt-2 text-sm text-slate-300">{channel.description}</p>
-                  <div className="mt-3 grid gap-1 text-xs text-slate-400">
-                    <p>{formatChannelLocation(channel.city, channel.state)}</p>
-                    <p>
-                      {formatMoney(channel.subscriptionPrice) || "Canal gratuito"} • {channel._count.subscriptions} assinantes
-                    </p>
-                    <p>{channel._count.contents} modulos • {channel._count.threads} posts</p>
-                    <p className="text-cyan-100/80">
-                      {subscribedChannelIds.has(channel.id)
-                        ? "Canal ja conectado ao seu plano."
-                        : hasPremiumAccess
-                          ? "Abra o canal e escolha se quer assinar."
-                          : "Abra o canal para conhecer a vitrine antes do upgrade."}
-                    </p>
-                  </div>
-                </Link>
-              ))}
+                  </Link>
+                )
+              })}
             </div>
           </section>
         </aside>

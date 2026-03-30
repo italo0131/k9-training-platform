@@ -1,8 +1,10 @@
 import { prisma } from "@/lib/prisma"
 import Link from "next/link"
 import { requireUser } from "@/lib/auth"
+import { formatMoney } from "@/lib/community"
+import { summarizeProfessionalCatalog } from "@/lib/professional-finance"
 import { getRoleLabel, getUserStatusLabel, isProfessionalRole, needsProfessionalApproval } from "@/lib/role"
-import { getAccountPlanLabel } from "@/lib/platform"
+import { getAccountPlanLabel, getChannelSubscriptionStatusLabel, isChannelSubscriptionActive } from "@/lib/platform"
 
 export default async function ProfilePage() {
   const session = await requireUser()
@@ -11,9 +13,14 @@ export default async function ProfilePage() {
     where: { id: session.user.id },
     include: {
       dogs: { include: { trainings: true }, orderBy: { createdAt: "desc" } },
-      forumChannels: { include: { _count: { select: { subscriptions: true, contents: true, threads: true } } } },
+      forumChannels: {
+        include: {
+          subscriptions: { where: { status: "ACTIVE" }, select: { id: true, status: true } },
+          _count: { select: { subscriptions: true, contents: true, threads: true } },
+        },
+      },
       channelSubscriptions: {
-        where: { status: "ACTIVE" },
+        where: { status: { in: ["ACTIVE", "PENDING_PAYMENT"] } },
         include: { channel: { include: { owner: true } } },
         orderBy: { startedAt: "desc" },
       },
@@ -73,6 +80,8 @@ export default async function ProfilePage() {
     }
   })
   const pendingProfessionalApproval = needsProfessionalApproval(user.role, user.status)
+  const professionalFinance = summarizeProfessionalCatalog(user.forumChannels)
+  const isProfessional = isProfessionalRole(user.role)
 
   return (
     <div className="min-h-[100svh] bg-[radial-gradient(circle_at_top,rgba(34,211,238,0.12),transparent_24%),linear-gradient(145deg,#020617,#0f172a_55%,#020617)] px-4 py-10 text-white sm:px-6">
@@ -169,11 +178,28 @@ export default async function ProfilePage() {
 
           <div className="space-y-4">
             <div className="rounded-[28px] border border-white/10 bg-white/6 p-6 shadow-lg shadow-black/30">
-              <h2 className="text-2xl font-semibold">Financeiro e plano</h2>
+              <div className="flex items-center justify-between gap-3">
+                <h2 className="text-2xl font-semibold">Financeiro e plano</h2>
+                {isProfessional ? (
+                  <Link href="/financeiro" className="text-sm text-cyan-300 hover:underline underline-offset-4">
+                    Abrir financeiro
+                  </Link>
+                ) : null}
+              </div>
               <div className="mt-4 grid gap-4">
                 <ProfileBlock title="Plano atual" value={getAccountPlanLabel(user.plan)} />
                 <ProfileBlock title="Status do plano" value={user.planStatus || "ACTIVE"} />
-                <ProfileBlock title="Receita registrada" value={`R$ ${((totalPayments._sum.amount || 0) / 100).toFixed(2)}`} />
+                <ProfileBlock
+                  title={isProfessional ? "Receita recorrente potencial" : "Investimento registrado"}
+                  value={
+                    isProfessional
+                      ? formatMoney(professionalFinance.recurringGross) || "R$ 0"
+                      : `R$ ${((totalPayments._sum.amount || 0) / 100).toFixed(2)}`
+                  }
+                />
+                {isProfessional ? (
+                  <ProfileBlock title="Repasse previsto" value={formatMoney(professionalFinance.projectedNet) || "R$ 0"} />
+                ) : null}
               </div>
             </div>
 
@@ -201,7 +227,7 @@ export default async function ProfilePage() {
           </div>
         </section>
 
-        {isProfessionalRole(user.role) && (
+        {isProfessional && (
           <section className="rounded-[28px] border border-white/10 bg-white/6 p-6 shadow-lg shadow-black/30">
             <div className="mb-4 flex items-center justify-between">
               <h2 className="text-2xl font-semibold">Canais e conteudos</h2>
@@ -295,8 +321,21 @@ export default async function ProfilePage() {
                   href={`/forum/channels/${subscription.channel.slug}`}
                   className="block rounded-2xl border border-white/10 bg-white/5 p-4 transition hover:bg-white/10"
                 >
-                  <p className="font-semibold">{subscription.channel.name}</p>
-                  <p className="mt-1 text-sm text-slate-300">{subscription.channel.owner.name}</p>
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="font-semibold">{subscription.channel.name}</p>
+                      <p className="mt-1 text-sm text-slate-300">{subscription.channel.owner.name}</p>
+                    </div>
+                    <span
+                      className={`rounded-full px-3 py-1 text-xs ${
+                        isChannelSubscriptionActive(subscription.status)
+                          ? "bg-emerald-500/15 text-emerald-100"
+                          : "bg-fuchsia-500/15 text-fuchsia-100"
+                      }`}
+                    >
+                      {getChannelSubscriptionStatusLabel(subscription.status)}
+                    </span>
+                  </div>
                 </Link>
               ))}
               {user.channelSubscriptions.length === 0 && <p className="text-sm text-slate-300">Nenhum canal assinado ainda.</p>}

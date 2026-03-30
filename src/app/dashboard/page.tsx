@@ -4,7 +4,8 @@ import { requireUser } from "@/lib/auth"
 import { isAdminRole, isProfessionalRole, isRootRole, isVetRole, STAFF_ROLES, type UserRole } from "@/lib/role"
 import RootConsole from "./RootConsole"
 import { getAccountPlanLabel, getDogLimit, getPlanStatusLabel, hasPremiumPlatformAccess } from "@/lib/platform"
-import { formatDateRange, formatRegion } from "@/lib/community"
+import { formatDateRange, formatMoney, formatRegion } from "@/lib/community"
+import { summarizeProfessionalCatalog } from "@/lib/professional-finance"
 
 type StatCardConfig = {
   title: string
@@ -84,7 +85,7 @@ export default async function Dashboard() {
         name: client.name,
         email: client.email,
         role: client.role,
-        status: (client as any).status || "ACTIVE",
+        status: client.status || "ACTIVE",
         dogs: client.dogs.length,
         trainings: allTrainings.length,
         progress,
@@ -144,6 +145,7 @@ async function AdminDashboard({ userId }: { userId: string }) {
         name: true,
         plan: true,
         planStatus: true,
+        status: true,
         emailVerifiedAt: true,
       },
     }),
@@ -289,6 +291,7 @@ async function ProfessionalDashboard({ userId, role }: { userId: string; role: s
         name: true,
         plan: true,
         planStatus: true,
+        status: true,
         city: true,
         state: true,
         emailVerifiedAt: true,
@@ -343,6 +346,7 @@ async function ProfessionalDashboard({ userId, role }: { userId: string; role: s
     ? await prisma.dog.count({ where: { ownerId: { in: uniqueClientIds } } })
     : 0
   const activeSubscriptions = ownedChannels.reduce((sum, channel) => sum + channel.subscriptions.length, 0)
+  const finance = summarizeProfessionalCatalog(ownedChannels)
   const regions = countRegions(uniqueClients)
   const topRegion = regions[0]?.label || "Regiao ainda em formacao"
   const normalizedRole = isVetRole(role) ? "VET" : "TRAINER"
@@ -359,7 +363,10 @@ async function ProfessionalDashboard({ userId, role }: { userId: string; role: s
     : "Seu plano atual ainda nao libera canal, agenda, conteudos e forum do adestrador. Atualize a assinatura para publicar, vender e atender por aqui."
   const clientLabel = isVetRole(role) ? "Tutores ativos" : "Clientes na carteira"
   const dogsLabel = isVetRole(role) ? "Caes monitorados" : "Caes acompanhados"
-  const hasPremium = hasPremiumPlatformAccess(me?.plan, normalizedRole, me?.planStatus)
+  const scheduleHeading = isVetRole(role) ? "Agenda de consultas" : "Agenda de atendimentos"
+  const scheduleEmpty = isVetRole(role) ? "Nenhuma consulta futura registrada." : "Nenhum atendimento futuro registrado."
+  const financeTitle = isVetRole(role) ? "Financeiro clinico" : "Financeiro da operacao"
+  const hasPremium = hasPremiumPlatformAccess(me?.plan, normalizedRole, me?.planStatus, me?.status)
 
   return (
     <div className="min-h-[100svh] bg-[radial-gradient(circle_at_top,rgba(34,211,238,0.13),transparent_24%),linear-gradient(145deg,#020617,#0f172a_55%,#020617)] px-4 py-8 text-white sm:px-6">
@@ -372,6 +379,12 @@ async function ProfessionalDashboard({ userId, role }: { userId: string; role: s
               <p className="max-w-2xl text-slate-300">{introCopy}</p>
             </div>
             <div className="flex flex-wrap gap-3">
+              <Link
+                href="/financeiro"
+                className="rounded-2xl border border-white/15 px-4 py-3 text-sm text-gray-100 transition hover:bg-white/10"
+              >
+                Abrir financeiro
+              </Link>
               <Link
                 href="/forum/channels/new"
                 className="rounded-2xl border border-emerald-300/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-100"
@@ -413,6 +426,12 @@ async function ProfessionalDashboard({ userId, role }: { userId: string; role: s
           </div>
         </section>
 
+        <section className="grid gap-4 lg:grid-cols-3">
+          <StatCard title="Receita recorrente potencial" value={formatMoney(finance.recurringGross) || "R$ 0"} href="/financeiro" accent />
+          <StatCard title="Repasse previsto" value={formatMoney(finance.projectedNet) || "R$ 0"} href="/financeiro" />
+          <StatCard title={financeTitle} value={finance.paidChannelsCount > 0 ? `${finance.paidChannelsCount} canais pagos` : "Montar catalogo"} href="/financeiro" />
+        </section>
+
         <section className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
           <div className="rounded-[28px] border border-white/10 bg-white/6 p-6 shadow-lg shadow-black/30">
             <div className="mb-4 flex items-center justify-between">
@@ -444,7 +463,7 @@ async function ProfessionalDashboard({ userId, role }: { userId: string; role: s
           <div className="space-y-4">
             <div className="rounded-[28px] border border-white/10 bg-white/6 p-6 shadow-lg shadow-black/30">
               <div className="mb-4 flex items-center justify-between">
-                <h2 className="text-2xl font-semibold">Agenda de atendimentos</h2>
+                <h2 className="text-2xl font-semibold">{scheduleHeading}</h2>
                 <Link href="/calendar" className="text-sm text-cyan-300 hover:underline underline-offset-4">
                   Ver calendario
                 </Link>
@@ -461,7 +480,7 @@ async function ProfessionalDashboard({ userId, role }: { userId: string; role: s
                     </p>
                   </Link>
                 ))}
-                {schedules.length === 0 && <p className="text-sm text-slate-300">Nenhum atendimento futuro registrado.</p>}
+                {schedules.length === 0 && <p className="text-sm text-slate-300">{scheduleEmpty}</p>}
               </div>
             </div>
 
@@ -487,7 +506,7 @@ async function ProfessionalDashboard({ userId, role }: { userId: string; role: s
         <section className="grid gap-4 xl:grid-cols-2">
           <div className="rounded-[28px] border border-white/10 bg-white/6 p-6 shadow-lg shadow-black/30">
             <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-2xl font-semibold">Conteudos recentes</h2>
+              <h2 className="text-2xl font-semibold">{isVetRole(role) ? "Conteudos e orientacoes" : "Conteudos recentes"}</h2>
               <Link href="/conteudos/new" className="text-sm text-cyan-300 hover:underline underline-offset-4">
                 Novo conteudo
               </Link>
@@ -505,7 +524,7 @@ async function ProfessionalDashboard({ userId, role }: { userId: string; role: s
 
           <div className="rounded-[28px] border border-white/10 bg-white/6 p-6 shadow-lg shadow-black/30">
             <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-2xl font-semibold">Posts e comunidade</h2>
+              <h2 className="text-2xl font-semibold">{isVetRole(role) ? "Casos, eventos e comunidade" : "Posts e comunidade"}</h2>
               <Link href="/forum" className="text-sm text-cyan-300 hover:underline underline-offset-4">
                 Abrir forum
               </Link>
@@ -529,7 +548,7 @@ async function ProfessionalDashboard({ userId, role }: { userId: string; role: s
               <p className="text-sm uppercase tracking-[0.2em] text-cyan-200/80">Presenca profissional</p>
               <h2 className="mt-2 text-2xl font-semibold">{professionalTitle} com perfil forte vende mais confianca</h2>
               <p className="mt-2 max-w-3xl text-sm leading-7 text-slate-300">
-                Mantenha bio, regiao, especialidades, disponibilidade e provas de consistencia bem preenchidas. Isso aumenta a confianca de quem chega na plataforma e faz seu trabalho parecer mais profissional.
+                Mantenha bio, regiao, especialidades, disponibilidade e provas de consistencia bem preenchidas. Isso aumenta a confianca de quem chega na plataforma e fortalece seu lado comercial dentro da K9.
               </p>
             </div>
             <Link
@@ -567,6 +586,7 @@ async function ClientDashboard({ userId }: { userId: string }) {
         name: true,
         plan: true,
         planStatus: true,
+        status: true,
         city: true,
         state: true,
         emailVerifiedAt: true,
@@ -625,8 +645,8 @@ async function ClientDashboard({ userId }: { userId: string }) {
     ? Math.round(trainings.reduce((sum, item) => sum + item.progress, 0) / trainings.length)
     : 0
   const athleteDogs = dogs.filter((dog) => dog.athleteClearance || !!dog.sportFocus).length
-  const hasPremium = hasPremiumPlatformAccess(me?.plan, "CLIENT", me?.planStatus)
-  const dogLimit = getDogLimit(me?.plan, "CLIENT", me?.planStatus)
+  const hasPremium = hasPremiumPlatformAccess(me?.plan, "CLIENT", me?.planStatus, me?.status)
+  const dogLimit = getDogLimit(me?.plan, "CLIENT", me?.planStatus, me?.status)
 
   return (
     <div className="min-h-[100svh] bg-[radial-gradient(circle_at_top,rgba(34,211,238,0.13),transparent_24%),linear-gradient(145deg,#020617,#0f172a_55%,#020617)] px-4 py-8 text-white sm:px-6">
@@ -668,7 +688,7 @@ async function ClientDashboard({ userId }: { userId: string }) {
           {!hasPremium && (
             <div className="mt-4 rounded-2xl border border-cyan-300/20 bg-cyan-500/10 p-4 text-cyan-50">
               Seu plano Free inclui ate {dogLimit} caes, blog e biblioteca de racas. Para receber conteudos dos
-              adestradores, entrar no forum e usar agenda e treinos completos, escolha Starter ou Pro.
+              adestradores, entrar no forum e usar agenda e treinos completos, ative o plano Standard.
               <Link href="/billing" className="ml-2 underline underline-offset-4">
                 Ver assinatura
               </Link>

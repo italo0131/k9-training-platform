@@ -11,12 +11,12 @@ import {
 } from "react"
 import { useSession } from "next-auth/react"
 
-import { hasPremiumPlatformAccess, isPlanActiveStatus } from "@/lib/platform"
-import { isAdminRole, isRootRole, isStaffRole } from "@/lib/role"
+import { createAccessSnapshot, type AccessSnapshot } from "@/lib/access"
 
 type PlatformSessionValue = {
   session: ReturnType<typeof useSession>["data"]
   status: ReturnType<typeof useSession>["status"]
+  access: AccessSnapshot
   isLoggedIn: boolean
   isLoading: boolean
   role: string
@@ -26,6 +26,9 @@ type PlatformSessionValue = {
   isAdmin: boolean
   isRoot: boolean
   isStaff: boolean
+  isProfessional: boolean
+  isApprovedProfessional: boolean
+  requiresProfessionalApproval: boolean
   hasPremiumAccess: boolean
   hasActivePlan: boolean
   refreshSession: () => Promise<unknown>
@@ -38,17 +41,25 @@ export function PlatformSessionProvider({ children }: { children: ReactNode }) {
   const { data, status, update } = sessionState
   const [lastSyncedAt, setLastSyncedAt] = useState(0)
 
-  const role = String(data?.user?.role || "GUEST").toUpperCase()
-  const plan = String(data?.user?.plan || "FREE").toUpperCase()
-  const planStatus = String(data?.user?.planStatus || "ACTIVE").toUpperCase()
-  const isLoggedIn = status === "authenticated" && !!data?.user?.id
+  const access = createAccessSnapshot({
+    userId: data?.user?.id,
+    role: data?.user?.role,
+    plan: data?.user?.plan,
+    planStatus: data?.user?.planStatus,
+    status: data?.user?.status,
+    emailVerifiedAt: data?.user?.emailVerifiedAt,
+  })
+  const role = access.role
+  const plan = access.plan
+  const planStatus = access.planStatus
+  const isLoggedIn = status === "authenticated" && access.isLoggedIn
   const isLoading = status === "loading"
-  const emailVerified = !!data?.user?.emailVerifiedAt
-  const isAdmin = isAdminRole(role)
-  const isRoot = isRootRole(role)
-  const isStaff = isStaffRole(role)
-  const hasActivePlan = isPlanActiveStatus(planStatus)
-  const hasPremiumAccess = hasPremiumPlatformAccess(plan, role, planStatus)
+  const emailVerified = access.emailVerified
+  const isAdmin = access.isAdmin
+  const isRoot = access.isRoot
+  const isStaff = access.isStaff
+  const hasActivePlan = access.hasActivePlan
+  const hasPremiumAccess = access.hasPremiumAccess
 
   const refreshSession = useEffectEvent(async () => {
     const now = Date.now()
@@ -109,6 +120,7 @@ export function PlatformSessionProvider({ children }: { children: ReactNode }) {
   const value: PlatformSessionValue = {
     session: data,
     status,
+    access,
     isLoggedIn,
     isLoading,
     role,
@@ -118,6 +130,9 @@ export function PlatformSessionProvider({ children }: { children: ReactNode }) {
     isAdmin,
     isRoot,
     isStaff,
+    isProfessional: access.isProfessional,
+    isApprovedProfessional: access.isApprovedProfessional,
+    requiresProfessionalApproval: access.requiresProfessionalApproval,
     hasPremiumAccess,
     hasActivePlan,
     refreshSession: () => refreshSession(),

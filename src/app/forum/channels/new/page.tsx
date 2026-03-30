@@ -2,13 +2,13 @@
 
 import { FormEvent, useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { useSession } from "next-auth/react"
 import { FORUM_CHANNEL_CATEGORIES, FORUM_SERVICE_MODES } from "@/lib/community"
-import { isApprovedProfessional, isProfessionalRole } from "@/lib/role"
+import { isApprovedProfessional, isProfessionalRole, isVetRole } from "@/lib/role"
+import { useAuth } from "@/app/hooks/useAuth"
 
 export default function NewForumChannelPage() {
   const router = useRouter()
-  const { data, status } = useSession()
+  const { user, status } = useAuth()
   const [form, setForm] = useState({
     name: "",
     description: "",
@@ -23,12 +23,19 @@ export default function NewForumChannelPage() {
   })
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState("")
-  const professionalApproved = isApprovedProfessional(data?.user?.role, data?.user?.status)
-  const professionalRole = isProfessionalRole(data?.user?.role)
+  const professionalApproved = isApprovedProfessional(user?.role, user?.status)
+  const professionalRole = isProfessionalRole(user?.role)
+  const isVet = isVetRole(user?.role)
+  const pageTitle = isVet ? "Criar canal veterinario" : "Criar canal de adestramento"
+  const pageDescription = isVet
+    ? "Monte seu espaco para orientacoes, protocolos, consultorias e acompanhamento clinico dentro da comunidade."
+    : "Monte seu espaco no forum para captar clientes, tirar duvidas e apresentar seus formatos de atendimento."
+  const onlinePriceLabel = isVet ? "Consulta online (R$)" : "Sessao online (R$)"
+  const inPersonPriceLabel = isVet ? "Consulta presencial (R$)" : "Sessao presencial (R$)"
 
   useEffect(() => {
     if (status === "loading") return
-    if (!data?.user) {
+    if (!user) {
       router.replace("/login")
       return
     }
@@ -39,7 +46,12 @@ export default function NewForumChannelPage() {
     if (!professionalApproved) {
       setMessage("Seu perfil profissional ainda esta em analise. Assim que for aprovado, o canal sera liberado.")
     }
-  }, [data, status, router, professionalApproved, professionalRole])
+  }, [user, status, router, professionalApproved, professionalRole])
+
+  useEffect(() => {
+    if (!isVet) return
+    setForm((current) => (current.category === "ADESTRAMENTO" ? { ...current, category: "SAUDE" } : current))
+  }, [isVet])
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -74,7 +86,7 @@ export default function NewForumChannelPage() {
     return null
   }
 
-  if (data?.user && professionalRole && !professionalApproved) {
+  if (user && professionalRole && !professionalApproved) {
     return (
       <div className="min-h-[100svh] bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 px-4 py-10 text-white sm:px-6">
         <div className="mx-auto max-w-3xl rounded-2xl border border-amber-300/20 bg-amber-500/10 p-8 shadow-2xl">
@@ -110,8 +122,8 @@ export default function NewForumChannelPage() {
       <div className="max-w-3xl mx-auto space-y-6 rounded-2xl border border-white/10 bg-white/5 p-8 shadow-2xl">
         <div>
           <p className="text-sm uppercase tracking-[0.2em] text-cyan-200/80">Canal</p>
-          <h1 className="text-3xl font-semibold">Criar canal de adestramento</h1>
-          <p className="text-gray-300/80">Monte seu espaço no fórum para captar clientes, tirar dúvidas e apresentar seus formatos de atendimento.</p>
+          <h1 className="text-3xl font-semibold">{pageTitle}</h1>
+          <p className="text-gray-300/80">{pageDescription}</p>
         </div>
 
         <form className="space-y-4" onSubmit={handleSubmit}>
@@ -156,7 +168,7 @@ export default function NewForumChannelPage() {
               </select>
             </div>
             <div className="flex flex-col gap-2">
-              <label className="text-sm text-gray-200/80">Assinatura mensal (R$)</label>
+              <label className="text-sm text-gray-200/80">Assinatura mensal do canal (R$)</label>
               <input
                 type="number"
                 min={0}
@@ -167,7 +179,7 @@ export default function NewForumChannelPage() {
               />
             </div>
             <div className="flex flex-col gap-2">
-              <label className="text-sm text-gray-200/80">Preço online (R$)</label>
+              <label className="text-sm text-gray-200/80">{onlinePriceLabel}</label>
               <input
                 type="number"
                 min={0}
@@ -178,7 +190,7 @@ export default function NewForumChannelPage() {
               />
             </div>
             <div className="flex flex-col gap-2">
-              <label className="text-sm text-gray-200/80">Preço presencial (R$)</label>
+              <label className="text-sm text-gray-200/80">{inPersonPriceLabel}</label>
               <input
                 type="number"
                 min={0}

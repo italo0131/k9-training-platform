@@ -2,16 +2,16 @@
 
 import { FormEvent, useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
-import { useSession } from "next-auth/react"
 import { BLOG_CATEGORIES } from "@/lib/community"
-import { isProfessionalRole, isStaffRole, needsProfessionalApproval } from "@/lib/role"
+import { isStaffRole, needsProfessionalApproval } from "@/lib/role"
 import VideoField from "@/app/components/VideoField"
 import ImageField from "@/app/components/ImageField"
 import { BLOG_POST_TYPES, getBlogPostTypeLabel } from "@/lib/platform"
+import { useAuth } from "@/app/hooks/useAuth"
 
 export default function NewBlogPostPage() {
   const router = useRouter()
-  const { data, status } = useSession()
+  const { user, status, access } = useAuth()
   const [title, setTitle] = useState("")
   const [postType, setPostType] = useState("POST")
   const [category, setCategory] = useState("GERAL")
@@ -28,8 +28,8 @@ export default function NewBlogPostPage() {
   const [eventState, setEventState] = useState("")
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState("")
-  const canPublish = isStaffRole(data?.user?.role)
-  const professionalPending = needsProfessionalApproval(data?.user?.role, data?.user?.status)
+  const canPublish = isStaffRole(user?.role)
+  const professionalPending = needsProfessionalApproval(user?.role, user?.status)
   const postTypeOptions = useMemo(
     () => BLOG_POST_TYPES.filter((item) => canPublish || item !== "EVENTO"),
     [canPublish]
@@ -37,11 +37,11 @@ export default function NewBlogPostPage() {
 
   useEffect(() => {
     if (status === "loading") return
-    if (!data?.user) {
+    if (!user) {
       router.replace("/login")
       return
     }
-  }, [data, status, router])
+  }, [user, status, router])
 
   useEffect(() => {
     if (!canPublish) {
@@ -54,8 +54,9 @@ export default function NewBlogPostPage() {
   }, [canPublish, postType])
 
   const isEvent = postType === "EVENTO"
+  const isReel = postType === "REEL"
 
-  if (status !== "loading" && professionalPending && isProfessionalRole(data?.user?.role)) {
+  if (status !== "loading" && professionalPending && access.isProfessional) {
     return (
       <div className="min-h-[100svh] bg-[radial-gradient(circle_at_top,rgba(34,211,238,0.12),transparent_24%),linear-gradient(145deg,#020617,#0f172a_55%,#020617)] px-4 py-10 text-white sm:px-6">
         <div className="mx-auto max-w-3xl rounded-[32px] border border-amber-300/20 bg-amber-500/10 p-8 shadow-2xl">
@@ -131,9 +132,15 @@ export default function NewBlogPostPage() {
           <p className="text-sm uppercase tracking-[0.2em] text-cyan-200/80">Blog</p>
           <h1 className="text-3xl font-semibold">Novo post da plataforma</h1>
           <p className="text-slate-300/80">
-            Use o blog para publicar orientacao gratuita, aprendizados, relatos de rotina e eventos da comunidade.
+            Use o blog para publicar orientacao gratuita, aprendizados, reels em video, relatos de rotina e eventos da comunidade.
           </p>
         </div>
+
+        {isReel && (
+          <div className="rounded-[28px] border border-fuchsia-300/20 bg-fuchsia-500/10 p-5 text-sm leading-7 text-fuchsia-50">
+            Reels funcionam melhor com video vertical, capa chamativa e texto curto. Se tiver uma thumb forte, use a imagem de capa para o feed ficar mais vivo.
+          </div>
+        )}
 
         <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
           <div className="grid gap-4 md:grid-cols-2">
@@ -256,17 +263,25 @@ export default function NewBlogPostPage() {
           )}
 
           <VideoField
-            label={isEvent ? "Video de convite ou referencia" : "Video do post"}
+            label={isEvent ? "Video de convite ou referencia" : isReel ? "Video do reel" : "Video do post"}
             value={videoUrl}
             onChange={setVideoUrl}
-            helperText="Use um video para complementar a orientacao ou apresentar melhor o evento."
+            helperText={
+              isReel
+                ? "Suba um video vertical ou cole um link para transformar este post em reel."
+                : "Use um video para complementar a orientacao ou apresentar melhor o evento."
+            }
           />
 
           <ImageField
-            label={isEvent ? "Imagem do evento" : "Imagem de capa"}
+            label={isEvent ? "Imagem do evento" : isReel ? "Capa do reel" : "Imagem de capa"}
             value={coverImageUrl}
             onChange={setCoverImageUrl}
-            helperText="A imagem ajuda o post a ficar mais chamativo no feed e no compartilhamento."
+            helperText={
+              isReel
+                ? "A capa e a thumb que seguram o clique no feed de reels."
+                : "A imagem ajuda o post a ficar mais chamativo no feed e no compartilhamento."
+            }
           />
 
           {canPublish && (
@@ -295,7 +310,7 @@ export default function NewBlogPostPage() {
               disabled={saving}
               className="rounded-2xl bg-cyan-500 px-5 py-3 text-white font-semibold shadow-lg shadow-cyan-500/20 transition hover:-translate-y-0.5 hover:shadow-cyan-500/30 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {saving ? "Salvando..." : isEvent ? "Publicar evento" : "Publicar no blog"}
+              {saving ? "Salvando..." : isEvent ? "Publicar evento" : isReel ? "Publicar reel" : "Publicar no blog"}
             </button>
           </div>
         </form>

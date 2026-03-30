@@ -81,6 +81,7 @@ const initialForm = {
 type Props = {
   mode: "create" | "edit"
   dogId?: string
+  onboardingMode?: boolean
 }
 
 const emptyBreedProfileFields = {
@@ -124,7 +125,7 @@ function resolveAutoSelectedBreed(query: string, breeds: BreedSuggestion[]) {
   return null
 }
 
-export default function DogProfileForm({ mode, dogId }: Props) {
+export default function DogProfileForm({ mode, dogId, onboardingMode = false }: Props) {
   const router = useRouter()
   const breedFileInputRef = useRef<HTMLInputElement | null>(null)
   const [form, setForm] = useState(initialForm)
@@ -448,6 +449,16 @@ export default function DogProfileForm({ mode, dogId }: Props) {
                 : "Cadastre o cao com identidade de raca, rotina nutricional e prontidao fisica. Agora a ficha ja nasce pronta para caes atletas tambem."}
             </p>
           </div>
+
+          {mode === "create" && onboardingMode ? (
+            <div className="rounded-2xl border border-cyan-300/20 bg-cyan-500/10 p-5 text-cyan-50">
+              <p className="text-xs uppercase tracking-[0.2em] text-cyan-100/80">Passo guiado</p>
+              <p className="mt-2 text-lg font-semibold">Seu primeiro cao destrava o resto da experiencia.</p>
+              <p className="mt-2 text-sm leading-7 text-cyan-50/90">
+                Assim que essa ficha estiver pronta, a plataforma consegue personalizar agenda, treinos, conteudos e recomendacoes com muito mais contexto.
+              </p>
+            </div>
+          ) : null}
 
           <div className="grid grid-cols-1 gap-3">
             <InfoPill title="Raca inteligente" desc="Busca via TheDogAPI para aplicar grupo, origem, peso de referencia e temperamento." />

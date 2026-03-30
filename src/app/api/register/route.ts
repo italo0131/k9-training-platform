@@ -6,6 +6,15 @@ import { sendVerifyEmail } from "@/lib/email"
 import { createVerificationCode } from "@/lib/verification"
 import { ACCOUNT_PLANS, REGISTERABLE_ROLES, isPaidPlan } from "@/lib/platform"
 import { isProfessionalRole } from "@/lib/role"
+import {
+  coerceNonNegativeInteger,
+  getPasswordValidationError,
+  normalizeEmailInput,
+  normalizeTextInput,
+  normalizeUrlInput,
+  rejectIfCrossOrigin,
+  rejectIfRateLimited,
+} from "@/lib/security"
 
 function hashPassword(password: string) {
   const salt = randomBytes(16).toString("hex")
@@ -13,25 +22,44 @@ function hashPassword(password: string) {
   return `scrypt:${salt}:${derived}`
 }
 
-function normalizeEmail(email: string) {
-  return email.trim().toLowerCase()
+function isDatabaseUnavailableError(error: unknown) {
+  if (!error || typeof error !== "object") return false
+
+  const candidate = error as { code?: string; name?: string; message?: string }
+  if (candidate.code === "P1001") return true
+  if (candidate.name === "PrismaClientInitializationError") return true
+  return String(candidate.message || "").includes("Can't reach database server")
 }
 
 export async function POST(req: Request) {
   try {
-    const data = await req.json()
+    const crossOriginError = rejectIfCrossOrigin(req)
+    if (crossOriginError) return crossOriginError
 
-    if (!data?.name || !data?.email || !data?.password) {
+    const rateLimitError = rejectIfRateLimited(
+      req,
+      "register",
+      12,
+      15 * 60 * 1000,
+      "Muitas tentativas de cadastro em pouco tempo. Aguarde alguns minutos antes de tentar novamente.",
+    )
+    if (rateLimitError) return rateLimitError
+
+    const data = await req.json()
+    const name = normalizeTextInput(data?.name, 120)
+    const email = normalizeEmailInput(data?.email)
+    const passwordError = getPasswordValidationError(data?.password)
+
+    if (!name || !email || passwordError) {
       return NextResponse.json(
-        { success: false, message: "Nome, email e senha sao os primeiros dados que precisamos para criar sua conta." },
+        { success: false, message: passwordError || "Nome, email e senha sao os primeiros dados que precisamos para criar sua conta." },
         { status: 400 },
       )
     }
 
     const hashedPassword = hashPassword(data.password)
-    const email = normalizeEmail(data.email)
-    const requestedRole = String(data?.role || "CLIENT").toUpperCase()
-    const requestedPlan = String(data?.plan || "FREE").toUpperCase()
+    const requestedRole = String(normalizeTextInput(data?.role, 20) || "CLIENT").toUpperCase()
+    const requestedPlan = String(normalizeTextInput(data?.plan, 32) || "FREE").toUpperCase()
     const requiresProfessionalApproval = isProfessionalRole(requestedRole)
 
     if (!REGISTERABLE_ROLES.includes(requestedRole as (typeof REGISTERABLE_ROLES)[number])) {
@@ -44,23 +72,23 @@ export async function POST(req: Request) {
 
     const user = await prisma.user.create({
       data: {
-        name: data.name,
+        name,
         email,
         password: hashedPassword,
         role: requestedRole,
         plan: requestedPlan,
         planStatus: isPaidPlan(requestedPlan) ? "CHECKOUT_REQUIRED" : "ACTIVE",
         planActivatedAt: isPaidPlan(requestedPlan) ? null : new Date(),
-        phone: data.phone || null,
-        city: data.city?.trim() || null,
-        state: data.state?.trim() || null,
-        headline: data.headline?.trim() || null,
-        bio: data.bio?.trim() || null,
-        specialties: data.specialties?.trim() || null,
-        experienceYears: data.experienceYears ? Math.max(0, Number(data.experienceYears)) : null,
-        availabilityNotes: data.availabilityNotes?.trim() || null,
-        websiteUrl: data.websiteUrl?.trim() || null,
-        instagramHandle: data.instagramHandle?.trim() || null,
+        phone: normalizeTextInput(data.phone, 32),
+        city: normalizeTextInput(data.city, 80),
+        state: normalizeTextInput(data.state, 80),
+        headline: normalizeTextInput(data.headline, 140),
+        bio: normalizeTextInput(data.bio, 600),
+        specialties: normalizeTextInput(data.specialties, 240),
+        experienceYears: coerceNonNegativeInteger(data.experienceYears, 80),
+        availabilityNotes: normalizeTextInput(data.availabilityNotes, 500),
+        websiteUrl: normalizeUrlInput(data.websiteUrl, 240),
+        instagramHandle: normalizeTextInput(data.instagramHandle, 80),
         status: requiresProfessionalApproval ? "PENDING_APPROVAL" : "ACTIVE",
       },
     })
@@ -80,7 +108,7 @@ export async function POST(req: Request) {
       console.log(`[verify-phone] ${data.phone} code=${phoneCode}`)
     }
 
-    const { password, ...safeUser } = user
+    const safeUser = Object.fromEntries(Object.entries(user).filter(([key]) => key !== "password"))
 
     return NextResponse.json(
       {
@@ -97,11 +125,21 @@ export async function POST(req: Request) {
       },
       { status: 201 },
     )
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("ERRO API POST /register:", error)
 
-    if (error.code === "P2002") {
+    if (error && typeof error === "object" && "code" in error && error.code === "P2002") {
       return NextResponse.json({ success: false, message: "Ja existe uma conta com esse email. Se ela for sua, voce pode entrar ou recuperar o acesso." }, { status: 409 })
+    }
+
+    if (isDatabaseUnavailableError(error)) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "O banco de dados nao esta acessivel agora. Se voce estiver rodando localmente, confirme se o Postgres esta ativo e se o DATABASE_URL aponta para localhost:5432 fora do Docker.",
+        },
+        { status: 503 },
+      )
     }
 
     return NextResponse.json({ success: false, message: "Ops, algo deu errado ao criar sua conta. Tente novamente em alguns instantes." }, { status: 500 })

@@ -129,3 +129,61 @@ export function rejectIfCrossOrigin(req: Request) {
 
   return NextResponse.json({ success: false, message: "Origem invalida" }, { status: 403 })
 }
+
+function collapseWhitespace(value: string) {
+  return value.replace(/[\u0000-\u001F\u007F]+/g, " ").replace(/\s+/g, " ").trim()
+}
+
+export function normalizeTextInput(value: unknown, maxLength = 255) {
+  if (typeof value !== "string") return null
+
+  const normalized = collapseWhitespace(value)
+  if (!normalized) return null
+
+  return normalized.slice(0, maxLength)
+}
+
+export function normalizeEmailInput(value: unknown) {
+  const normalized = normalizeTextInput(value, 160)
+  return normalized ? normalized.toLowerCase() : null
+}
+
+export function normalizeUrlInput(value: unknown, maxLength = 255) {
+  const normalized = normalizeTextInput(value, maxLength)
+  if (!normalized) return null
+
+  try {
+    const url = new URL(normalized)
+    if (url.protocol !== "http:" && url.protocol !== "https:") {
+      return null
+    }
+    return url.toString().slice(0, maxLength)
+  } catch {
+    return null
+  }
+}
+
+export function coerceNonNegativeInteger(value: unknown, max = 999) {
+  if (value === null || value === undefined || value === "") return null
+
+  const parsed = Number(value)
+  if (!Number.isFinite(parsed)) return null
+
+  return Math.min(max, Math.max(0, Math.trunc(parsed)))
+}
+
+export function getPasswordValidationError(password: unknown, min = 8, max = 128) {
+  if (typeof password !== "string") {
+    return "Senha invalida."
+  }
+
+  if (password.length < min) {
+    return `A senha precisa ter pelo menos ${min} caracteres.`
+  }
+
+  if (password.length > max) {
+    return `A senha pode ter no maximo ${max} caracteres.`
+  }
+
+  return null
+}

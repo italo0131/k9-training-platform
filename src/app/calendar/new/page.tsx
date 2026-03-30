@@ -2,9 +2,8 @@
 
 import { FormEvent, ReactNode, useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { useSession } from "next-auth/react"
-import { isStaffRole } from "@/lib/role"
 import { SCHEDULE_FORMATS, getScheduleFormatLabel } from "@/lib/platform"
+import { useAuth } from "@/app/hooks/useAuth"
 
 type Dog = {
   id: string
@@ -21,8 +20,8 @@ type UserOption = {
 
 export default function NewSchedulePage() {
   const router = useRouter()
-  const { data } = useSession()
-  const isStaff = isStaffRole(data?.user?.role)
+  const { access } = useAuth()
+  const isStaff = access.isStaff
   const [users, setUsers] = useState<UserOption[]>([])
   const [dogs, setDogs] = useState<Dog[]>([])
   const [userId, setUserId] = useState("")

@@ -48,8 +48,10 @@ export async function POST(req: Request) {
   const content = String(data?.content || "").trim()
   const postType = String(data?.postType || "POST").toUpperCase()
   const isEvent = postType === "EVENTO"
+  const isReel = postType === "REEL"
   const eventStartsAt = normalizeDate(data?.eventStartsAt)
   const eventEndsAt = normalizeDate(data?.eventEndsAt)
+  const normalizedVideoUrl = normalizeVideoUrl(data?.videoUrl)
 
   if (!title || !content) {
     return NextResponse.json({ success: false, message: "Título e conteúdo são obrigatórios" }, { status: 400 })
@@ -57,6 +59,10 @@ export async function POST(req: Request) {
 
   if (!BLOG_POST_TYPES.includes(postType as (typeof BLOG_POST_TYPES)[number])) {
     return NextResponse.json({ success: false, message: "Tipo de post invalido" }, { status: 400 })
+  }
+
+  if (isReel && !normalizedVideoUrl) {
+    return NextResponse.json({ success: false, message: "Reel precisa de um video para ser publicado" }, { status: 400 })
   }
 
   if (isEvent && !isStaffRole(session.user.role)) {
@@ -90,7 +96,7 @@ export async function POST(req: Request) {
       excerpt: normalize(String(data?.excerpt || ""), 280) || null,
       content,
       coverImageUrl: normalize(String(data?.coverImageUrl || ""), 500) || null,
-      videoUrl: normalizeVideoUrl(data?.videoUrl),
+      videoUrl: normalizedVideoUrl,
       featured: canPublish ? Boolean(data?.featured) : false,
       eventStartsAt,
       eventEndsAt,

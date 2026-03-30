@@ -12,7 +12,7 @@ import SafeImage from "@/app/components/SafeImage"
 export default async function ForumThreadPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   const session = await requireUser()
-  const hasPremiumAccess = hasPremiumPlatformAccess(session.user.plan, session.user.role, session.user.planStatus)
+  const hasPremiumAccess = hasPremiumPlatformAccess(session.user.plan, session.user.role, session.user.planStatus, session.user.status)
   const thread = await prisma.forumThread.findUnique({
     where: { id },
     include: {
@@ -224,7 +224,7 @@ export default async function ForumThreadPage({ params }: { params: Promise<{ id
             canReply={canInteractWithThread}
             blockedMessage="Seu plano atual permite ler este post, mas para responder no forum voce precisa ativar um plano pago."
             actionHref="/billing?locked=/forum"
-            actionLabel="Ativar Starter ou Pro"
+            actionLabel="Ativar Standard"
           />
         </section>
       </div>

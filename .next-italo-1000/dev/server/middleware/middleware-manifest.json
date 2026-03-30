@@ -1,0 +1,127 @@
+{
+  "sorted_middleware": [],
+  "middleware": {
+    "/": {
+      "files": [
+        "server/edge/chunks/node_modules_3693ccac._.js",
+        "server/edge/chunks/[root-of-the-server]__a992eee7._.js",
+        "server/edge/chunks/turbopack-node_modules_next_dist_esm_build_templates_edge-wrapper_91fd63a2.js"
+      ],
+      "name": "middleware",
+      "page": "/",
+      "matchers": [
+        {
+          "regexp": "/:nextData(_next/data/[^/]{1,})?/admin/:path*{(\\\\.json)}?",
+          "originalSource": "/admin/:path*"
+        },
+        {
+          "regexp": "/:nextData(_next/data/[^/]{1,})?/dashboard/:path*{(\\\\.json)}?",
+          "originalSource": "/dashboard/:path*"
+        },
+        {
+          "regexp": "/:nextData(_next/data/[^/]{1,})?/billing/:path*{(\\\\.json)}?",
+          "originalSource": "/billing/:path*"
+        },
+        {
+          "regexp": "/:nextData(_next/data/[^/]{1,})?/financeiro/:path*{(\\\\.json)}?",
+          "originalSource": "/financeiro/:path*"
+        },
+        {
+          "regexp": "/:nextData(_next/data/[^/]{1,})?/calendar/:path*{(\\\\.json)}?",
+          "originalSource": "/calendar/:path*"
+        },
+        {
+          "regexp": "/:nextData(_next/data/[^/]{1,})?/conteudos/:path*{(\\\\.json)}?",
+          "originalSource": "/conteudos/:path*"
+        },
+        {
+          "regexp": "/:nextData(_next/data/[^/]{1,})?/dogs/:path*{(\\\\.json)}?",
+          "originalSource": "/dogs/:path*"
+        },
+        {
+          "regexp": "/:nextData(_next/data/[^/]{1,})?/forum/:path*{(\\\\.json)}?",
+          "originalSource": "/forum/:path*"
+        },
+        {
+          "regexp": "/:nextData(_next/data/[^/]{1,})?/profile/:path*{(\\\\.json)}?",
+          "originalSource": "/profile/:path*"
+        },
+        {
+          "regexp": "/:nextData(_next/data/[^/]{1,})?/racas/ia/:path*{(\\\\.json)}?",
+          "originalSource": "/racas/ia/:path*"
+        },
+        {
+          "regexp": "/:nextData(_next/data/[^/]{1,})?/racas/comparador/:path*{(\\\\.json)}?",
+          "originalSource": "/racas/comparador/:path*"
+        },
+        {
+          "regexp": "/:nextData(_next/data/[^/]{1,})?/racas/radar/:path*{(\\\\.json)}?",
+          "originalSource": "/racas/radar/:path*"
+        },
+        {
+          "regexp": "/:nextData(_next/data/[^/]{1,})?/training/:path*{(\\\\.json)}?",
+          "originalSource": "/training/:path*"
+        },
+        {
+          "regexp": "/:nextData(_next/data/[^/]{1,})?/verify/:path*{(\\\\.json)}?",
+          "originalSource": "/verify/:path*"
+        },
+        {
+          "regexp": "/:nextData(_next/data/[^/]{1,})?/api/admin/:path*{(\\\\.json)}?",
+          "originalSource": "/api/admin/:path*"
+        },
+        {
+          "regexp": "/:nextData(_next/data/[^/]{1,})?/api/billing/:path*{(\\\\.json)}?",
+          "originalSource": "/api/billing/:path*"
+        },
+        {
+          "regexp": "/:nextData(_next/data/[^/]{1,})?/api/content/:path*{(\\\\.json)}?",
+          "originalSource": "/api/content/:path*"
+        },
+        {
+          "regexp": "/:nextData(_next/data/[^/]{1,})?/api/dogs/:path*{(\\\\.json)}?",
+          "originalSource": "/api/dogs/:path*"
+        },
+        {
+          "regexp": "/:nextData(_next/data/[^/]{1,})?/api/forum/:path*{(\\\\.json)}?",
+          "originalSource": "/api/forum/:path*"
+        },
+        {
+          "regexp": "/:nextData(_next/data/[^/]{1,})?/api/profile/:path*{(\\\\.json)}?",
+          "originalSource": "/api/profile/:path*"
+        },
+        {
+          "regexp": "/:nextData(_next/data/[^/]{1,})?/api/schedule/:path*{(\\\\.json)}?",
+          "originalSource": "/api/schedule/:path*"
+        },
+        {
+          "regexp": "/:nextData(_next/data/[^/]{1,})?/api/subscription/:path*{(\\\\.json)}?",
+          "originalSource": "/api/subscription/:path*"
+        },
+        {
+          "regexp": "/:nextData(_next/data/[^/]{1,})?/api/training/:path*{(\\\\.json)}?",
+          "originalSource": "/api/training/:path*"
+        },
+        {
+          "regexp": "/:nextData(_next/data/[^/]{1,})?/api/verify/:path*{(\\\\.json)}?",
+          "originalSource": "/api/verify/:path*"
+        },
+        {
+          "regexp": "/:nextData(_next/data/[^/]{1,})?/blog/new/:path*{(\\\\.json)}?",
+          "originalSource": "/blog/new/:path*"
+        }
+      ],
+      "wasm": [],
+      "assets": [],
+      "env": {
+        "__NEXT_BUILD_ID": "development",
+        "NEXT_SERVER_ACTIONS_ENCRYPTION_KEY": "V9CdSPjdGPmm9vGSkdD64UmfXjWmDzPoORf3INEscxs=",
+        "__NEXT_PREVIEW_MODE_ID": "7327cba71070f359c346878fa060aded",
+        "__NEXT_PREVIEW_MODE_ENCRYPTION_KEY": "3ea87f669b097716d6f4aac5c4973cae4dab9b304d04e352266e066753032253",
+        "__NEXT_PREVIEW_MODE_SIGNING_KEY": "2079883c689c9f5583798f8d3c172bc43c9dddb03df314b90b34f8bf0de2c46f"
+      }
+    }
+  },
+  "instrumentation": null,
+  "functions": {}
+}

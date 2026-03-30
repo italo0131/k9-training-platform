@@ -7,10 +7,19 @@
     "build": "next build",
     "start": "next start -H 0.0.0.0",
     "lint": "eslint",
+    "typecheck": "tsc --noEmit",
+    "db:push": "prisma db push --schema=prisma/schema.prisma",
+    "db:migrate:deploy": "prisma migrate deploy --schema=prisma/schema.prisma",
+    "db:migrate:status": "prisma migrate status --schema=prisma/schema.prisma",
+    "postinstall": "prisma generate --schema=prisma/schema.prisma",
     "bootstrap:accounts": "node scripts/bootstrap-accounts.mjs"
+  },
+  "prisma": {
+    "schema": "prisma/schema.prisma"
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",
+    "@supabase/supabase-js": "^2.100.1",
     "autoprefixer": "^10.4.27",
     "bcrypt": "^6.0.0",
     "framer-motion": "^12.38.0",

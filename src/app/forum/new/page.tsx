@@ -2,11 +2,10 @@
 
 import { FormEvent, useEffect, useMemo, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
-import { useSession } from "next-auth/react"
 import VideoField from "@/app/components/VideoField"
 import ImageField from "@/app/components/ImageField"
 import { FORUM_POST_TYPES, getForumPostTypeLabel } from "@/lib/platform"
-import { isStaffRole } from "@/lib/role"
+import { useAuth } from "@/app/hooks/useAuth"
 
 type Channel = {
   id: string
@@ -18,7 +17,7 @@ type Channel = {
 export default function NewThreadPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const { data } = useSession()
+  const { access } = useAuth()
   const [title, setTitle] = useState("")
   const [content, setContent] = useState("")
   const [channelId, setChannelId] = useState("")
@@ -33,7 +32,7 @@ export default function NewThreadPage() {
   const [channels, setChannels] = useState<Channel[]>([])
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState("")
-  const canCreateEvent = isStaffRole(data?.user?.role)
+  const canCreateEvent = access.isStaff
   const postTypes = useMemo(
     () => FORUM_POST_TYPES.filter((item) => canCreateEvent || item !== "EVENTO"),
     [canCreateEvent]

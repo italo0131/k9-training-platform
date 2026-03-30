@@ -3,10 +3,12 @@ FROM node:20-slim AS builder
 
 WORKDIR /app
 
-RUN apt-get update && apt-get install -y openssl
+RUN apt-get update && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
 
 COPY package*.json ./
-RUN npm install
+COPY prisma/schema.prisma ./prisma/schema.prisma
+
+RUN npm ci
 
 COPY . .
 
@@ -27,4 +29,4 @@ ENV PORT=3000
 EXPOSE 3000
 
 RUN apt-get update && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
-CMD ["sh", "-c", "npx prisma db push 2>&1 | tee /proc/1/fd/1 && npm start"]
+CMD ["npm", "run", "start"]

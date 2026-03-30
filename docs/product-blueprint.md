@@ -146,8 +146,7 @@ A plataforma precisa sustentar consumo recorrente:
 O modelo inicial recomendado:
 
 - Free: ate 3 caes, blog e area de racas
-- Starter: acesso completo
-- Pro: acesso completo com posicionamento premium para profissionais
+- Standard: R$ 29,90/mes com acesso completo
 
 Futuros caminhos:
 
@@ -206,7 +205,7 @@ Futuros caminhos:
 - hierarquia de perfis
 - autenticacao por credenciais
 - verificacao de email preparada
-- planos Free, Starter e Pro
+- planos Free e Standard
 - cadastro de caes enriquecido
 - integracao com API de racas
 - blog

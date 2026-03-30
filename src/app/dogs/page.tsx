@@ -22,9 +22,9 @@ export default async function DogsPage() {
   const vaccinatedCount = dogs.filter((dog) => dog.vaccinated).length
   const nutritionReadyCount = dogs.filter((dog) => dog.foodName || dog.portionSize || dog.feedingTimes).length
   const athleteCount = dogs.filter((dog) => dog.activityProfile === "ATHLETE").length
-  const hasPremium = hasPremiumPlatformAccess(session.user.plan, session.user.role, session.user.planStatus)
-  const dogLimit = getDogLimit(session.user.plan, session.user.role, session.user.planStatus)
-  const remainingSlots = getRemainingDogSlots(dogs.length, session.user.plan, session.user.role, session.user.planStatus)
+  const hasPremium = hasPremiumPlatformAccess(session.user.plan, session.user.role, session.user.planStatus, session.user.status)
+  const dogLimit = getDogLimit(session.user.plan, session.user.role, session.user.planStatus, session.user.status)
+  const remainingSlots = getRemainingDogSlots(dogs.length, session.user.plan, session.user.role, session.user.planStatus, session.user.status)
 
   return (
     <div className="min-h-[100svh] bg-[radial-gradient(circle_at_top,rgba(34,211,238,0.12),transparent_24%),linear-gradient(145deg,#020617,#0f172a_55%,#020617)] px-4 py-8 text-white sm:px-6">

@@ -29,15 +29,15 @@ export async function POST(req: Request) {
   const { session, error } = await requireApiUser()
   if (error) return error
 
-  if (!hasPremiumPlatformAccess(session.user.plan, session.user.role, session.user.planStatus)) {
-    return NextResponse.json({ success: false, message: "A criacao de canal faz parte dos planos pagos" }, { status: 403 })
-  }
-
   if (!isApprovedProfessional(session.user.role, session.user.status)) {
     return NextResponse.json(
       { success: false, message: "Somente profissionais aprovados podem criar canal" },
       { status: 403 }
     )
+  }
+
+  if (!hasPremiumPlatformAccess(session.user.plan, session.user.role, session.user.planStatus, session.user.status)) {
+    return NextResponse.json({ success: false, message: "Seu acesso profissional ainda nao esta ativo para criar canais." }, { status: 403 })
   }
 
   const data = await req.json()

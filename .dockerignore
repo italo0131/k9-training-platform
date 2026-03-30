@@ -20,10 +20,15 @@
 **/obj
 **/secrets.dev.yaml
 **/values.dev.yaml
+.next*
+.turbo
 node_modules
 .next
+.next-codex
+.next-root-0
 .git
 .env
 .local
 LICENSE
 README.md
+prisma/dev.db

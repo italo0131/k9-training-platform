@@ -20,8 +20,10 @@ export default async function BlogPage() {
     },
   })
 
+  const reels = posts.filter((post) => Boolean(post.videoUrl) && post.postType !== "EVENTO")
+  const reelIds = new Set(reels.map((post) => post.id))
   const events = posts.filter((post) => post.postType === "EVENTO")
-  const articles = posts.filter((post) => post.postType !== "EVENTO")
+  const articles = posts.filter((post) => post.postType !== "EVENTO" && !reelIds.has(post.id))
   const featured = posts.find((post) => post.featured) || posts[0] || null
   const socialVolume = posts.reduce((sum, post) => sum + post._count.comments + post._count.reactions, 0)
 
@@ -40,6 +42,12 @@ export default async function BlogPage() {
             </div>
 
             <div className="flex flex-wrap gap-3">
+              <Link
+                href="/blog/reels"
+                className="rounded-2xl border border-fuchsia-300/20 bg-fuchsia-500/10 px-4 py-3 text-sm font-medium text-fuchsia-50 transition hover:bg-fuchsia-500/20"
+              >
+                Abrir reels
+              </Link>
               {canWrite ? (
                 <Link
                   href="/blog/new"
@@ -60,14 +68,10 @@ export default async function BlogPage() {
 
           <div className="mt-8 grid gap-4 md:grid-cols-5">
             <Metric title="Posts publicados" value={String(posts.length)} description="Artigos, guias e relatos publicados" />
+            <Metric title="Reels ativos" value={String(reels.length)} description="Videos curtos prontos para o feed" />
             <Metric title="Eventos ativos" value={String(events.length)} description="Entram no calendario do cliente" />
             <Metric title="Autores" value={String(new Set(posts.map((post) => post.authorId)).size)} description="Clientes, especialistas e equipe" />
             <Metric title="Movimento" value={String(socialVolume)} description="Curtidas e comentarios circulando no blog" />
-            <Metric
-              title="Modo"
-              value={canWrite ? "Conta ativa" : "Leitura"}
-              description={canWrite ? "Sua conta ja pode publicar no blog" : "Entre para participar da comunidade"}
-            />
           </div>
         </section>
 
@@ -101,17 +105,51 @@ export default async function BlogPage() {
                 </div>
               </div>
               <div className="min-h-[260px] bg-slate-950/50">
-                {featured.coverImageUrl ? (
-                  <SafeImage src={featured.coverImageUrl} alt={featured.title} className="h-full w-full object-cover" />
-                ) : (
-                  <div className="flex h-full items-center justify-center bg-[radial-gradient(circle_at_top,rgba(34,211,238,0.18),transparent_35%),linear-gradient(140deg,#0f172a,#111827)] px-8 text-center text-slate-300">
-                    Post em destaque com visual pronto para ganhar imagem, video e conversa.
-                  </div>
-                )}
+                <BlogMediaSurface title={featured.title} imageUrl={featured.coverImageUrl} videoUrl={featured.videoUrl} heightClass="h-full min-h-[260px]" featured />
               </div>
             </div>
           </Link>
         )}
+
+        <section className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm uppercase tracking-[0.2em] text-fuchsia-200/80">Reels</p>
+              <h2 className="text-2xl font-semibold">Videos curtos para aprender rapido</h2>
+            </div>
+            <Link href="/blog/reels" className="text-sm text-fuchsia-200 hover:underline underline-offset-4">
+              Ver feed completo
+            </Link>
+          </div>
+
+          {reels.length === 0 && <p className="text-slate-300">Nenhum reel publicado ainda.</p>}
+
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {reels.slice(0, 6).map((post) => (
+              <Link
+                key={post.id}
+                href={`/blog/${post.slug}`}
+                className="overflow-hidden rounded-[28px] border border-white/10 bg-white/6 shadow-lg shadow-black/20 transition hover:bg-white/10"
+              >
+                <BlogMediaSurface title={post.title} imageUrl={post.coverImageUrl} videoUrl={post.videoUrl} heightClass="h-[420px]" reel />
+                <div className="p-5">
+                  <div className="flex flex-wrap items-center gap-2 text-xs uppercase tracking-[0.16em]">
+                    <span className="rounded-full bg-fuchsia-500/15 px-3 py-1 text-fuchsia-100">{post.postType === "REEL" ? "Reel" : "Video"}</span>
+                    <span className="rounded-full bg-white/10 px-3 py-1 text-gray-200">{post.category}</span>
+                    <span className="text-cyan-200/80">{post.author.name}</span>
+                  </div>
+                  <h3 className="mt-3 text-xl font-semibold">{post.title}</h3>
+                  <p className="mt-2 text-sm text-slate-300">{truncate(post.excerpt || post.content, 120)}</p>
+                  <div className="mt-4 flex flex-wrap gap-3 text-xs text-slate-400">
+                    <span>{post._count.reactions} curtidas</span>
+                    <span>{post._count.comments} comentarios</span>
+                    <span>{new Date(post.createdAt).toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })}</span>
+                  </div>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </section>
 
         <section className="space-y-4">
           <div className="flex items-center justify-between">
@@ -131,7 +169,7 @@ export default async function BlogPage() {
                 href={`/blog/${post.slug}`}
                 className="overflow-hidden rounded-[28px] border border-white/10 bg-white/6 transition hover:bg-white/10"
               >
-                {post.coverImageUrl && <SafeImage src={post.coverImageUrl} alt={post.title} className="h-44 w-full object-cover" />}
+                <BlogMediaSurface title={post.title} imageUrl={post.coverImageUrl} videoUrl={post.videoUrl} heightClass="h-48" />
                 <div className="p-5">
                   <div className="flex flex-wrap gap-2 text-xs uppercase tracking-[0.16em]">
                     <span className="rounded-full bg-emerald-500/15 px-3 py-1 text-emerald-100">Evento</span>
@@ -172,7 +210,7 @@ export default async function BlogPage() {
                 href={`/blog/${post.slug}`}
                 className="overflow-hidden rounded-[28px] border border-white/10 bg-white/6 shadow-lg shadow-black/20 transition hover:bg-white/10"
               >
-                {post.coverImageUrl && <SafeImage src={post.coverImageUrl} alt={post.title} className="h-44 w-full object-cover" />}
+                <BlogMediaSurface title={post.title} imageUrl={post.coverImageUrl} videoUrl={post.videoUrl} heightClass="h-48" />
                 <div className="p-5">
                   <div className="flex flex-wrap items-center gap-2 text-xs uppercase tracking-[0.16em]">
                     <span className="text-cyan-200/80">{post.author.name}</span>
@@ -195,6 +233,49 @@ export default async function BlogPage() {
             ))}
           </div>
         </section>
+      </div>
+    </div>
+  )
+}
+
+function BlogMediaSurface({
+  title,
+  imageUrl,
+  videoUrl,
+  heightClass,
+  featured = false,
+  reel = false,
+}: {
+  title: string
+  imageUrl?: string | null
+  videoUrl?: string | null
+  heightClass: string
+  featured?: boolean
+  reel?: boolean
+}) {
+  if (imageUrl) {
+    return <SafeImage src={imageUrl} alt={title} className={`${heightClass} w-full object-cover`} />
+  }
+
+  return (
+    <div
+      className={`relative overflow-hidden ${heightClass} bg-[radial-gradient(circle_at_top,rgba(34,211,238,0.16),transparent_34%),linear-gradient(145deg,#0f172a,#111827)]`}
+    >
+      <div className="absolute inset-0 bg-[linear-gradient(180deg,transparent,rgba(2,6,23,0.82))]" />
+      <div className="absolute left-4 top-4 flex flex-wrap gap-2 text-xs uppercase tracking-[0.16em]">
+        {videoUrl ? (
+          <span className={`rounded-full px-3 py-1 ${reel ? "bg-fuchsia-500/20 text-fuchsia-100" : "bg-cyan-500/15 text-cyan-100"}`}>
+            {reel ? "Reel" : "Video"}
+          </span>
+        ) : null}
+        {featured ? <span className="rounded-full bg-white/10 px-3 py-1 text-gray-100">Destaque</span> : null}
+      </div>
+      <div className="absolute inset-x-0 bottom-0 p-5">
+        <p className="max-w-sm text-sm leading-6 text-slate-200">
+          {videoUrl
+            ? "Esta publicacao traz video e conversa da comunidade."
+            : "Use uma capa forte para deixar este conteudo ainda mais atraente no feed."}
+        </p>
       </div>
     </div>
   )

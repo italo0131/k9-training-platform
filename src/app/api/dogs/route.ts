@@ -44,7 +44,7 @@ export async function POST(req: Request) {
 
     if (!isStaffRole(session.user.role)) {
       const currentDogs = await prisma.dog.count({ where: { ownerId } })
-      const limit = getDogLimit(session.user.plan, session.user.role, session.user.planStatus)
+      const limit = getDogLimit(session.user.plan, session.user.role, session.user.planStatus, session.user.status)
       if (Number.isFinite(limit) && currentDogs >= limit) {
         return NextResponse.json(
           {

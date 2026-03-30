@@ -385,9 +385,9 @@ export default function RootConsole({
             className="rounded-2xl border border-amber-200/15 bg-white/5 p-5 shadow-lg shadow-black/30 hover:bg-white/10 transition"
           >
             <h3 className="text-lg font-semibold mb-3">Financeiro</h3>
-            <p className="text-sm text-gray-300">Eventos Stripe: {stats.paymentsCount}</p>
+            <p className="text-sm text-gray-300">Eventos financeiros: {stats.paymentsCount}</p>
             <p className="text-sm text-gray-300">Total pago (centavos): {stats.totalPaid}</p>
-            <p className="text-xs text-amber-100/80 mt-2">Dados reais via webhook Stripe.</p>
+            <p className="text-xs text-amber-100/80 mt-2">Dados reais recebidos pelos webhooks do gateway.</p>
           </Link>
         </section>
       </div>

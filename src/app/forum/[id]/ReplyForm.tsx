@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { FormEvent, useState } from "react"
-import { useSession } from "next-auth/react"
+import { useAuth } from "@/app/hooks/useAuth"
 
 export default function ReplyForm({
   threadId,
@@ -17,14 +17,14 @@ export default function ReplyForm({
   actionHref?: string
   actionLabel?: string
 }) {
-  const { data } = useSession()
+  const { isAuthenticated } = useAuth()
   const [content, setContent] = useState("")
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState("")
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
-    if (!data?.user) {
+    if (!isAuthenticated) {
       setMessage("Faça login para responder.")
       return
     }

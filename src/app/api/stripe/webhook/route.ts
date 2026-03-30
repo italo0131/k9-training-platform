@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server"
+import type Stripe from "stripe"
 import { stripe } from "@/lib/stripe"
 import { prisma } from "@/lib/prisma"
 
@@ -15,21 +16,39 @@ export async function POST(req: Request) {
 
   const rawBody = await req.text()
 
-  let event: any
+  let event: Stripe.Event
   try {
     event = stripe.webhooks.constructEvent(rawBody, signature, webhookSecret)
-  } catch (err: any) {
-    console.error("Stripe webhook signature error:", err?.message)
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : "Unknown signature error"
+    console.error("Stripe webhook signature error:", message)
     return NextResponse.json({ success: false, message: "Assinatura invalida" }, { status: 400 })
   }
 
-  const data = event.data?.object || {}
+  const data = ((event.data?.object || {}) as unknown) as Record<string, unknown> & {
+    customer_details?: { email?: string | null } | null
+    metadata?: Record<string, string | undefined> | null
+  }
   const type = event.type || "unknown"
-  const amount = data.amount_paid || data.amount_total || data.amount_due || data.amount || null
-  const currency = data.currency || null
-  const status = data.status || null
-  const customerEmail = data.customer_email || data.customer_details?.email || null
-  const customerId = data.customer || null
+  const amount =
+    typeof data.amount_paid === "number"
+      ? data.amount_paid
+      : typeof data.amount_total === "number"
+        ? data.amount_total
+        : typeof data.amount_due === "number"
+          ? data.amount_due
+          : typeof data.amount === "number"
+            ? data.amount
+            : null
+  const currency = typeof data.currency === "string" ? data.currency : null
+  const status = typeof data.status === "string" ? data.status : null
+  const customerEmail =
+    typeof data.customer_email === "string"
+      ? data.customer_email
+      : typeof data.customer_details?.email === "string"
+        ? data.customer_details.email
+        : null
+  const customerId = typeof data.customer === "string" ? data.customer : null
   const metadataUserId = data.metadata?.userId || null
   const metadataPlan = String(data.metadata?.plan || "").toUpperCase() || null
 
@@ -72,7 +91,7 @@ export async function POST(req: Request) {
         await prisma.user.update({
           where: { id: userId },
           data: {
-            plan: metadataPlan || "STARTER",
+            plan: metadataPlan || "STANDARD",
             planStatus: "ACTIVE",
             planActivatedAt: new Date(),
           },

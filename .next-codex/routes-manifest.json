@@ -253,12 +253,28 @@
       "namedRegex": "^/forum/channels/(?<nxtPslug>[^/]+?)(?:/)?$"
     },
     {
+      "page": "/forum/channels/[slug]/assinar",
+      "regex": "^/forum/channels/([^/]+?)/assinar(?:/)?$",
+      "routeKeys": {
+        "nxtPslug": "nxtPslug"
+      },
+      "namedRegex": "^/forum/channels/(?<nxtPslug>[^/]+?)/assinar(?:/)?$"
+    },
+    {
       "page": "/forum/[id]",
       "regex": "^/forum/([^/]+?)(?:/)?$",
       "routeKeys": {
         "nxtPid": "nxtPid"
       },
       "namedRegex": "^/forum/(?<nxtPid>[^/]+?)(?:/)?$"
+    },
+    {
+      "page": "/racas/[id]",
+      "regex": "^/racas/([^/]+?)(?:/)?$",
+      "routeKeys": {
+        "nxtPid": "nxtPid"
+      },
+      "namedRegex": "^/racas/(?<nxtPid>[^/]+?)(?:/)?$"
     },
     {
       "page": "/training/[sessionId]",
@@ -571,6 +587,12 @@
       "namedRegex": "^/blog/new(?:/)?$"
     },
     {
+      "page": "/blog/reels",
+      "regex": "^/blog/reels(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/blog/reels(?:/)?$"
+    },
+    {
       "page": "/calendar",
       "regex": "^/calendar(?:/)?$",
       "routeKeys": {},
@@ -649,6 +671,12 @@
       "namedRegex": "^/favicon\\.ico(?:/)?$"
     },
     {
+      "page": "/financeiro",
+      "regex": "^/financeiro(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/financeiro(?:/)?$"
+    },
+    {
       "page": "/forum",
       "regex": "^/forum(?:/)?$",
       "routeKeys": {},
@@ -695,6 +723,24 @@
       "regex": "^/racas(?:/)?$",
       "routeKeys": {},
       "namedRegex": "^/racas(?:/)?$"
+    },
+    {
+      "page": "/racas/comparador",
+      "regex": "^/racas/comparador(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/racas/comparador(?:/)?$"
+    },
+    {
+      "page": "/racas/ia",
+      "regex": "^/racas/ia(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/racas/ia(?:/)?$"
+    },
+    {
+      "page": "/racas/radar",
+      "regex": "^/racas/radar(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/racas/radar(?:/)?$"
     },
     {
       "page": "/register",

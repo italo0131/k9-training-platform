@@ -3,13 +3,22 @@
 import Link from "next/link"
 import { type FormEvent, useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { getSession, signIn, useSession } from "next-auth/react"
+import { getSession, signIn } from "next-auth/react"
 
 import { useAppToast } from "@/app/components/AppToastProvider"
+import { useAuth } from "@/app/hooks/useAuth"
+import { getAccountPlanLabel } from "@/lib/platform"
+
+type ProfilePayload = {
+  success?: boolean
+  stats?: {
+    dogs?: number
+  }
+}
 
 export default function LoginPage() {
   const router = useRouter()
-  const { status } = useSession()
+  const { status } = useAuth()
   const { pushToast } = useAppToast()
 
   const [email, setEmail] = useState("")
@@ -18,15 +27,63 @@ export default function LoginPage() {
   const [needsTwoFactor, setNeedsTwoFactor] = useState(false)
   const [message, setMessage] = useState("")
   const [loading, setLoading] = useState(false)
+  const [hasAttemptedLogin, setHasAttemptedLogin] = useState(false)
+
+  async function resolvePostLoginJourney() {
+    const session = await getSession()
+    const plan = String(session?.user?.plan || "FREE").toUpperCase()
+    const planLabel = getAccountPlanLabel(plan)
+    const planStatus = String(session?.user?.planStatus || "ACTIVE").toUpperCase()
+    const emailVerifiedAt = session?.user?.emailVerifiedAt || null
+    let dogsCount = 0
+
+    try {
+      const response = await fetch("/api/profile")
+      const payload = (await response.json().catch(() => null)) as ProfilePayload | null
+      dogsCount = Number(payload?.stats?.dogs || 0)
+    } catch (error) {
+      console.error("Nao foi possivel ler o resumo da conta apos o login.", error)
+    }
+
+    if (!emailVerifiedAt) {
+      return {
+        destination: plan !== "FREE" ? `/verify?next=billing&plan=${plan}` : "/verify",
+        description:
+          plan !== "FREE"
+            ? `Seu acesso foi liberado. Agora vamos confirmar o email e concluir o plano ${planLabel}.`
+            : "Seu acesso foi liberado. Falta so confirmar o email para deixar a conta pronta.",
+      }
+    }
+
+    if (plan !== "FREE" && planStatus !== "ACTIVE") {
+      return {
+        destination: "/billing",
+        description: `Seu plano ${planLabel} ja foi escolhido. Falta so concluir a assinatura para liberar tudo.`,
+      }
+    }
+
+    if (dogsCount === 0) {
+      return {
+        destination: "/dogs/new",
+        description: "Tudo certo com a conta. O proximo passo agora e cadastrar seu primeiro cao.",
+      }
+    }
+
+    return {
+      destination: "/dashboard",
+      description: "Seu acesso foi liberado. Vamos continuar de onde voce parou.",
+    }
+  }
 
   useEffect(() => {
-    if (status === "authenticated") {
+    if (status === "authenticated" && !hasAttemptedLogin) {
       router.replace("/dashboard")
     }
-  }, [status, router])
+  }, [hasAttemptedLogin, status, router])
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
+    setHasAttemptedLogin(true)
     setLoading(true)
     setMessage("")
 
@@ -68,19 +125,30 @@ export default function LoginPage() {
           return
         }
 
+        if (res.error === "AUTH_SCHEMA_OUTDATED") {
+          const note = "A base local ficou desatualizada em relacao ao codigo. Sincronize o banco e tente entrar novamente."
+          setMessage(note)
+          pushToast({ title: "Banco precisa ser sincronizado", description: note, variant: "error" })
+          return
+        }
+
+        if (res.error === "AUTH_DATABASE_UNAVAILABLE") {
+          const note = "Nao consegui falar com o banco de dados agora. Vale conferir se o Postgres local esta ativo."
+          setMessage(note)
+          pushToast({ title: "Banco indisponivel", description: note, variant: "error" })
+          return
+        }
+
         const note = "Nao consegui entrar com esses dados. Vale revisar email e senha com calma."
         setMessage(note)
         pushToast({ title: "Acesso nao confirmado", description: note, variant: "error" })
         return
       }
 
-      const session = await getSession()
-      const destination = session?.user?.emailVerifiedAt ? "/dashboard" : "/verify"
+      const { destination, description } = await resolvePostLoginJourney()
       pushToast({
         title: "Tudo certo por aqui",
-        description: session?.user?.emailVerifiedAt
-          ? "Seu acesso foi liberado. Vamos continuar de onde voce parou."
-          : "Seu acesso foi liberado. Falta so confirmar o email para liberar tudo.",
+        description,
         variant: "success",
       })
       router.push(destination)
@@ -184,6 +252,10 @@ export default function LoginPage() {
 
             <div className="mt-6 rounded-2xl border border-white/10 bg-white/5 p-4 text-sm leading-7 text-slate-300">
               Se a plataforma te pedir verificacao de email ou codigo extra, isso e so uma camada de protecao para a sua conta e para a comunidade.
+            </div>
+
+            <div className="mt-4 rounded-2xl border border-emerald-300/15 bg-emerald-500/10 p-4 text-sm leading-7 text-emerald-50">
+              Depois do login, a plataforma te leva direto para a proxima etapa real: confirmar email, concluir assinatura ou cadastrar o primeiro cao.
             </div>
 
             <div className="mt-6 flex items-center justify-between text-sm text-gray-300/80">

@@ -17,13 +17,14 @@ import {
   Shield,
   UserCircle2,
   Users,
+  WalletCards,
   X,
   type LucideIcon,
 } from "lucide-react"
 
 import { usePlatformSession } from "@/app/components/PlatformSessionProvider"
 import { getAccountPlanLabel } from "@/lib/platform"
-import { getRoleLabel, isAdminRole, isProfessionalRole, isRootRole, isTrainerRole } from "@/lib/role"
+import { getRoleLabel, isAdminRole, isProfessionalRole, isRootRole } from "@/lib/role"
 
 type NavLink = {
   href: string
@@ -49,6 +50,7 @@ const adminLinks: NavLink[] = [
 
 const professionalLinks: NavLink[] = [
   { href: "/dashboard", label: "Painel", icon: LayoutDashboard },
+  { href: "/financeiro", label: "Financeiro", icon: WalletCards },
   { href: "/calendar", label: "Agenda", icon: Calendar },
   { href: "/forum", label: "Forum", icon: MessageSquare },
   { href: "/conteudos", label: "Conteudos", icon: BookOpen },
@@ -84,7 +86,6 @@ export default function Navbar() {
 
   const isAdmin = isAdminRole(role)
   const isRoot = isRootRole(role)
-  const isTrainer = isTrainerRole(role)
   const isProfessional = isProfessionalRole(role)
   const needsEmailVerification = isLoggedIn && !emailVerified
 
@@ -102,14 +103,12 @@ export default function Navbar() {
 
   const createLinks: NavLink[] = isAdmin
     ? [{ href: "/blog/new", label: "Novo post", icon: FileText }]
-    : isTrainer
+    : isProfessional
       ? [
           { href: "/forum/channels/new", label: "Meu canal", icon: MessageSquare },
           { href: "/blog/new", label: "Novo post", icon: FileText },
         ]
-      : isProfessional
-        ? [{ href: "/blog/new", label: "Novo post", icon: FileText }]
-        : []
+      : []
 
   const loggedLinks = needsEmailVerification
     ? [{ href: "/verify", label: "Confirmar email", icon: Shield }, ...baseLinks, ...createLinks]

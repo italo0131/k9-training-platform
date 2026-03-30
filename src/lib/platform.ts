@@ -1,32 +1,54 @@
-import { isAdminRole } from "@/lib/role"
+import { isAdminRole, isApprovedProfessional } from "@/lib/role"
 
 export const REGISTERABLE_ROLES = ["CLIENT", "TRAINER", "VET"] as const
 
-export const ACCOUNT_PLANS = ["FREE", "STARTER", "PRO"] as const
-export const PAID_ACCOUNT_PLANS = ["STARTER", "PRO"] as const
+export const ACCOUNT_PLANS = ["FREE", "STANDARD"] as const
+export const PAID_ACCOUNT_PLANS = ["STANDARD"] as const
 export const FREE_PLAN_DOG_LIMIT = 3
+
+export function normalizeAccountPlan(plan?: string | null) {
+  const value = String(plan || "FREE").trim().toUpperCase()
+
+  if (
+    value === "STANDARD" ||
+    value === "STANDARD_MONTHLY" ||
+    value === "STARTER" ||
+    value === "STARTER_YEARLY" ||
+    value === "PRO" ||
+    value === "PREMIUM" ||
+    value === "PREMIUM_MONTH" ||
+    value === "PREMIUM_MONTHLY" ||
+    value === "PREMIUM_YEARLY" ||
+    value === "PREMIUM_ANNUAL"
+  ) {
+    return "STANDARD"
+  }
+
+  return "FREE"
+}
 
 export const ACCOUNT_PLAN_OPTIONS = [
   {
     code: "FREE",
     name: "Free",
     priceLabel: "R$ 0",
-    description: "Entrada leve para estudar racas, usar o blog e cadastrar ate 3 caes.",
+    description: "Entrada leve para explorar a plataforma, estudar racas, ler dicas e organizar o basico da rotina.",
     perks: [
       "Ate 3 caes por conta",
-      "Blog livre e area educativa de racas",
-      "Perfil e base da rotina organizados",
+      "Blog livre, racas e trilhas abertas",
+      "Base da rotina, perfil e agenda enxuta",
+      "Sem IA personalizada e sem canais premium",
     ],
   },
   {
-    code: "STARTER",
-    name: "Starter",
-    priceLabel: "R$ 79/mes",
-    description: "Libera toda a plataforma para treino, agenda, conteudo e comunidade.",
+    code: "STANDARD",
+    name: "Standard",
+    priceLabel: "R$ 29,90/mes",
+    description: "Plano principal da plataforma para liberar cursos, IA, agenda completa, forum e canais premium.",
     perks: [
-      "Tudo o que a K9 oferece",
-      "Forum, canais, conteudos, treinos e calendario",
-      "Ideal para clientes ativos e operacao profissional",
+      "Cursos, comparador e IA liberados",
+      "Treinos, agenda e forum com prioridade",
+      "Base ideal para assinar canais e estudar com constancia",
     ],
   },
 ] as const
@@ -59,11 +81,10 @@ export const TRAINING_DIFFICULTIES = ["INICIANTE", "INTERMEDIARIO", "AVANCADO"] 
 export const SCHEDULE_FORMATS = ["PRESENTIAL", "ONLINE", "HYBRID"] as const
 
 export const FORUM_POST_TYPES = ["POST", "DICA", "TECNICA", "COMPORTAMENTO", "EVENTO"] as const
-export const BLOG_POST_TYPES = ["POST", "GUIA", "CASO_REAL", "EVENTO"] as const
+export const BLOG_POST_TYPES = ["POST", "GUIA", "CASO_REAL", "REEL", "EVENTO"] as const
 
 export function isPaidPlan(plan?: string | null) {
-  const value = String(plan || "FREE").toUpperCase()
-  return value === "STARTER" || value === "PRO"
+  return normalizeAccountPlan(plan) === "STANDARD"
 }
 
 export function isPlanActiveStatus(status?: string | null) {
@@ -71,20 +92,27 @@ export function isPlanActiveStatus(status?: string | null) {
   return value === "ACTIVE"
 }
 
-export function hasPremiumPlatformAccess(plan?: string | null, role?: string | null, planStatus?: string | null) {
+export function hasPremiumPlatformAccess(plan?: string | null, role?: string | null, planStatus?: string | null, accountStatus?: string | null) {
   if (isAdminRole(role)) return true
+  if (isApprovedProfessional(role, accountStatus)) return true
   if (!isPaidPlan(plan)) return false
   if (typeof planStatus === "undefined" || planStatus === null || planStatus === "") return true
   return isPlanActiveStatus(planStatus)
 }
 
-export function getDogLimit(plan?: string | null, role?: string | null, planStatus?: string | null) {
-  if (hasPremiumPlatformAccess(plan, role, planStatus)) return Number.POSITIVE_INFINITY
+export function getDogLimit(plan?: string | null, role?: string | null, planStatus?: string | null, accountStatus?: string | null) {
+  if (hasPremiumPlatformAccess(plan, role, planStatus, accountStatus)) return Number.POSITIVE_INFINITY
   return FREE_PLAN_DOG_LIMIT
 }
 
-export function getRemainingDogSlots(currentDogs: number, plan?: string | null, role?: string | null, planStatus?: string | null) {
-  const limit = getDogLimit(plan, role, planStatus)
+export function getRemainingDogSlots(
+  currentDogs: number,
+  plan?: string | null,
+  role?: string | null,
+  planStatus?: string | null,
+  accountStatus?: string | null
+) {
+  const limit = getDogLimit(plan, role, planStatus, accountStatus)
   if (!Number.isFinite(limit)) return Number.POSITIVE_INFINITY
   return Math.max(0, limit - currentDogs)
 }
@@ -99,26 +127,23 @@ export function getPlanStatusLabel(status?: string | null) {
 }
 
 export function getAccountPlanLabel(plan?: string | null) {
-  const value = String(plan || "FREE").toUpperCase()
-  if (value === "STARTER") return "Starter"
-  if (value === "PRO") return "Pro"
-  return "Free"
+  return normalizeAccountPlan(plan) === "STANDARD" ? "Standard" : "Free"
 }
 
 export function getAccountPlanDescription(plan?: string | null) {
-  const value = String(plan || "FREE").toUpperCase()
-  if (value === "STARTER") return "Libera toda a plataforma para estudar, treinar, assinar canais e acompanhar a rotina."
-  if (value === "PRO") return "Libera tudo com operacao premium, mais autoridade e espaco para crescer dentro da K9."
-  return "Ate 3 caes, blog livre e area de racas para entrar no universo K9 com calma."
+  if (normalizeAccountPlan(plan) === "STANDARD") {
+    return "Libera cursos, IA, agenda completa, forum premium e assinatura de canais para a jornada completa na plataforma."
+  }
+  return "Acesso de entrada com blog, racas, trilhas abertas e ate 3 caes para comecar sem pressa."
 }
 
 export function getPlanUpgradeReason(reason?: string | null) {
   const value = String(reason || "").toLowerCase()
-  if (value.includes("/forum")) return "O forum social e os canais profissionais estao nos planos Starter e Pro."
-  if (value.includes("/conteudos")) return "Os conteudos exclusivos dos adestradores estao nos planos Starter e Pro."
-  if (value.includes("/training")) return "A trilha completa de treino esta nos planos Starter e Pro."
-  if (value.includes("/calendar")) return "A agenda integrada esta nos planos Starter e Pro."
-  return "Essa area faz parte dos planos Starter e Pro."
+  if (value.includes("/forum")) return "O forum social completo e os canais profissionais pedem Standard ou acesso profissional aprovado."
+  if (value.includes("/conteudos")) return "Os conteudos exclusivos dos profissionais fazem parte do Standard e da operacao profissional."
+  if (value.includes("/training")) return "A trilha completa de treino faz parte do Standard."
+  if (value.includes("/calendar")) return "A agenda completa faz parte do Standard e da operacao profissional."
+  return "Essa area faz parte do Standard ou do acesso profissional aprovado."
 }
 
 export function getScheduleFormatLabel(format?: string | null) {
@@ -161,6 +186,22 @@ export function getChannelContentAccessLabel(access?: string | null) {
   return "Assinantes"
 }
 
+export function isChannelSubscriptionActive(status?: string | null) {
+  return String(status || "").toUpperCase() === "ACTIVE"
+}
+
+export function isChannelSubscriptionPending(status?: string | null) {
+  const value = String(status || "").toUpperCase()
+  return value === "PENDING_PAYMENT" || value === "CHECKOUT_PENDING"
+}
+
+export function getChannelSubscriptionStatusLabel(status?: string | null) {
+  const value = String(status || "").toUpperCase()
+  if (isChannelSubscriptionPending(value)) return "Checkout pendente"
+  if (value === "CANCELED") return "Cancelada"
+  return "Ativa"
+}
+
 export function getTrainingFocusLabel(value?: string | null) {
   return String(value || "OBEDIENCIA")
     .toLowerCase()
@@ -181,6 +222,7 @@ export function getBlogPostTypeLabel(value?: string | null) {
   const normalized = String(value || "POST").toUpperCase()
   if (normalized === "GUIA") return "Guia"
   if (normalized === "CASO_REAL") return "Caso real"
+  if (normalized === "REEL") return "Reel"
   if (normalized === "EVENTO") return "Evento"
   return "Post"
 }

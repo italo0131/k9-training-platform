@@ -56,6 +56,16 @@ export default function RegisterPage() {
 
   const selectedPlan = useMemo(() => ACCOUNT_PLAN_OPTIONS.find((item) => item.code === plan) || ACCOUNT_PLAN_OPTIONS[0], [plan])
   const isProfessional = isProfessionalRole(role)
+  const nextActionTitle = isProfessional
+    ? "Confirmar email e entrar na analise profissional"
+    : plan === "FREE"
+      ? "Confirmar email e cadastrar o primeiro cao"
+      : `Confirmar email e ativar o plano ${selectedPlan.name}`
+  const nextActionDescription = isProfessional
+    ? "Depois do cadastro, a equipe revisa seu perfil antes de liberar canal, conteudo exclusivo e operacao profissional."
+    : plan === "FREE"
+      ? "Assim que o email estiver confirmado, voce ja pode montar sua base e cadastrar o primeiro cao."
+      : "Assim que o email estiver confirmado, a plataforma te leva direto para concluir a assinatura."
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -167,6 +177,10 @@ export default function RegisterPage() {
                 Seu perfil profissional entra em analise antes de criar canal, publicar conteudo exclusivo e atuar como especialista.
               </div>
             ) : null}
+            <div className="mt-4 rounded-2xl border border-emerald-300/15 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-50">
+              <p className="font-semibold">{nextActionTitle}</p>
+              <p className="mt-2 leading-6 text-emerald-50/90">{nextActionDescription}</p>
+            </div>
           </div>
         </section>
 

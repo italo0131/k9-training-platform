@@ -7,7 +7,7 @@ import { ACCOUNT_PLANS } from "@/lib/platform"
 import { isAdminRole, isProfessionalRole, isRootRole } from "@/lib/role"
 
 const PENDING_PLAN_STATUSES = ["CHECKOUT_REQUIRED", "CHECKOUT_PENDING", "PAST_DUE", "CANCELED"]
-const PAID_PLANS = ACCOUNT_PLANS.filter((plan) => plan !== "FREE")
+const PAID_PLANS = Array.from(new Set([...ACCOUNT_PLANS.filter((plan) => plan !== "FREE"), "STARTER", "PRO", "PREMIUM"]))
 
 export default async function AdminApprovalsPage() {
   const session = await requireUser()

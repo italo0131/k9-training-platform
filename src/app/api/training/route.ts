@@ -10,7 +10,7 @@ export async function GET(){
  const { session, error } = await requireApiUser()
  if(error) return error
 
- if(!hasPremiumPlatformAccess(session.user.plan, session.user.role, session.user.planStatus)){
+ if(!hasPremiumPlatformAccess(session.user.plan, session.user.role, session.user.planStatus, session.user.status)){
   return NextResponse.json({success:false,message:"Treinos completos disponiveis apenas nos planos pagos"},{status:403})
  }
 
@@ -31,7 +31,7 @@ export async function POST(req:Request){
  const { session, error } = await requireApiUser()
  if(error) return error
 
- if(!hasPremiumPlatformAccess(session.user.plan, session.user.role, session.user.planStatus)){
+ if(!hasPremiumPlatformAccess(session.user.plan, session.user.role, session.user.planStatus, session.user.status)){
   return NextResponse.json({success:false,message:"Treinos completos disponiveis apenas nos planos pagos"},{status:403})
  }
 

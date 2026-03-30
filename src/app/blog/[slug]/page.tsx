@@ -1,14 +1,16 @@
-import { prisma } from "@/lib/prisma"
 import Link from "next/link"
-import { getAuthSession } from "@/lib/auth"
-import { getRoleLabel, isStaffRole } from "@/lib/role"
-import VideoEmbed from "@/app/components/VideoEmbed"
+
+import DeletePostButton from "@/app/components/DeletePostButton"
 import EngagementBar from "@/app/components/EngagementBar"
 import SafeImage from "@/app/components/SafeImage"
+import VideoEmbed from "@/app/components/VideoEmbed"
+import { getAuthSession } from "@/lib/auth"
 import { formatDateRange, formatRegion } from "@/lib/community"
+import { prisma } from "@/lib/prisma"
 import { getBlogPostTypeLabel } from "@/lib/platform"
+import { getRoleLabel, isStaffRole } from "@/lib/role"
+
 import BlogDiscussionPanel from "./BlogDiscussionPanel"
-import DeletePostButton from "@/app/components/DeletePostButton"
 
 export default async function BlogPostPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
@@ -66,34 +68,23 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
     },
   })
 
-
-
-
-
-
   const isEvent = post.postType === "EVENTO"
+  const isReel = post.postType === "REEL"
 
   return (
     <div className="min-h-[100svh] bg-[radial-gradient(circle_at_top,rgba(34,211,238,0.12),transparent_24%),linear-gradient(145deg,#020617,#0f172a_55%,#020617)] px-4 py-10 text-white sm:px-6">
       <div className="mx-auto max-w-6xl space-y-6">
-        <Link href="/blog" className="text-cyan-300 hover:underline underline-offset-4">
-          Voltar ao blog
-        </Link>
-        <article>
-            <h1>{post.title}</h1>
-              <p>Por {post.author.name}</p>
-              <div>{post.content}</div>
-                {/* Botão de exclusão visível apenas para o autor */}
-                {session?.user && (
-                  <DeletePostButton
-                    postId={post.id}
-                authorId={post.authorId}
-              postType="blog"
-        />
-      )}
-    </article>
-
-
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <Link href="/blog" className="text-cyan-300 hover:underline underline-offset-4">
+            Voltar ao blog
+          </Link>
+          <div className="flex flex-wrap gap-3">
+            <Link href="/blog/reels" className="text-fuchsia-200 hover:underline underline-offset-4">
+              Abrir reels
+            </Link>
+            {session?.user ? <DeletePostButton postId={post.id} authorId={post.authorId} postType="blog" /> : null}
+          </div>
+        </div>
 
         <section className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
           <article className="rounded-[32px] border border-white/10 bg-white/6 p-8 shadow-2xl">
@@ -101,31 +92,56 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
               <span className="text-cyan-200/80">{post.author.name}</span>
               <span className="rounded-full bg-white/10 px-3 py-1 text-gray-200">{getRoleLabel(post.author.role)}</span>
               <span className="rounded-full bg-emerald-500/15 px-3 py-1 text-emerald-100">{post.category}</span>
-              <span className="rounded-full bg-cyan-500/15 px-3 py-1 text-cyan-100">{getBlogPostTypeLabel(post.postType)}</span>
+              <span className={`rounded-full px-3 py-1 ${isReel ? "bg-fuchsia-500/15 text-fuchsia-100" : "bg-cyan-500/15 text-cyan-100"}`}>
+                {getBlogPostTypeLabel(post.postType)}
+              </span>
               {post.videoUrl && <span className="rounded-full bg-white/10 px-3 py-1 text-gray-200">Video</span>}
               {post.coverImageUrl && <span className="rounded-full bg-white/10 px-3 py-1 text-gray-200">Imagem</span>}
               {!post.published && <span className="rounded-full bg-amber-500/15 px-3 py-1 text-amber-100">Rascunho</span>}
             </div>
+
             <h1 className="mt-3 text-3xl font-semibold">{post.title}</h1>
             <p className="mt-2 text-xs text-gray-400">
               {new Date(post.createdAt).toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" })}
             </p>
 
-            {post.coverImageUrl && (
-              <div className="mt-6 overflow-hidden rounded-[28px] border border-white/10 bg-slate-950/40">
-                <SafeImage src={post.coverImageUrl} alt={post.title} className="h-[340px] w-full object-cover" />
-              </div>
-            )}
-
-            {isEvent && post.eventStartsAt && (
+            {isEvent && post.eventStartsAt ? (
               <div className="mt-5 grid gap-4 rounded-[28px] border border-emerald-300/15 bg-emerald-500/10 p-5 md:grid-cols-3">
                 <InfoBlock title="Data" value={formatDateRange(post.eventStartsAt, post.eventEndsAt) || "A definir"} />
                 <InfoBlock title="Local" value={post.eventLocation || "Local em definicao"} />
                 <InfoBlock title="Regiao" value={formatRegion(post.eventCity, post.eventState)} />
               </div>
-            )}
+            ) : null}
 
-            {post.excerpt && <p className="mt-5 text-lg text-slate-300">{post.excerpt}</p>}
+            {post.excerpt ? <p className="mt-5 text-lg text-slate-300">{post.excerpt}</p> : null}
+
+            {isReel ? (
+              <div className="mt-6 max-w-md">
+                <VideoEmbed
+                  url={post.videoUrl}
+                  title={post.title}
+                  variant="reel"
+                  autoPlay
+                  muted
+                  loop
+                  poster={post.coverImageUrl}
+                />
+              </div>
+            ) : (
+              <>
+                {post.coverImageUrl ? (
+                  <div className="mt-6 overflow-hidden rounded-[28px] border border-white/10 bg-slate-950/40">
+                    <SafeImage src={post.coverImageUrl} alt={post.title} className="h-[340px] w-full object-cover" />
+                  </div>
+                ) : null}
+
+                {post.videoUrl ? (
+                  <div className="mt-6">
+                    <VideoEmbed url={post.videoUrl} title={post.title} poster={post.coverImageUrl} />
+                  </div>
+                ) : null}
+              </>
+            )}
 
             <div className="mt-6">
               <EngagementBar
@@ -136,10 +152,6 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
                 conversationLabel="Comentarios"
                 canInteract={Boolean(session?.user)}
               />
-            </div>
-
-            <div className="mt-6">
-              <VideoEmbed url={post.videoUrl} title={post.title} />
             </div>
 
             <div className="mt-6 whitespace-pre-wrap leading-7 text-gray-200">{post.content}</div>
@@ -154,6 +166,24 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
                 {post.author.bio || "Perfil em evolucao, mas ja participando ativamente da conversa da comunidade."}
               </p>
             </div>
+
+            {post.videoUrl ? (
+              <div className="rounded-[28px] border border-fuchsia-300/15 bg-fuchsia-500/10 p-6 shadow-lg shadow-black/30">
+                <p className="text-sm uppercase tracking-[0.2em] text-fuchsia-100/80">Midia</p>
+                <h2 className="mt-2 text-2xl font-semibold">{isReel ? "Este conteudo faz parte dos reels" : "Post com video"}</h2>
+                <p className="mt-3 text-sm leading-7 text-fuchsia-50/90">
+                  {isReel
+                    ? "O feed de reels concentra os videos curtos da plataforma para consumo rapido e mais impacto visual."
+                    : "Posts com video ganham mais forca de aprendizado e ficam mais vivos no feed da plataforma."}
+                </p>
+                <Link
+                  href="/blog/reels"
+                  className="mt-5 inline-flex rounded-2xl border border-white/15 px-4 py-3 text-sm text-white transition hover:bg-white/10"
+                >
+                  Ver feed de reels
+                </Link>
+              </div>
+            ) : null}
 
             <div className="rounded-[28px] border border-white/10 bg-white/6 p-6 shadow-lg shadow-black/30">
               <div className="flex items-center justify-between">
@@ -181,7 +211,7 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
                     </div>
                   </Link>
                 ))}
-                {relatedPosts.length === 0 && <p className="text-sm text-slate-300">Nenhum post relacionado publicado ainda.</p>}
+                {relatedPosts.length === 0 ? <p className="text-sm text-slate-300">Nenhum post relacionado publicado ainda.</p> : null}
               </div>
             </div>
           </aside>

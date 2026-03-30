@@ -3,6 +3,7 @@
 import { useState } from "react"
 
 import { usePlatformSession } from "@/app/components/PlatformSessionProvider"
+import type { BillingProvider } from "@/lib/billing-provider"
 
 type Plan = {
   code: string
@@ -14,43 +15,56 @@ type Plan = {
   perks: string[]
 }
 
+function getUnavailableCheckoutMessage(provider: BillingProvider, providerLabel: string) {
+  return provider === "ASAAS"
+    ? "Configure a chave do Asaas e o webhook para abrir o checkout real."
+    : `Esse plano ainda nao foi conectado ao ${providerLabel}. Configure o checkout real antes de liberar a assinatura.`
+}
+
 function getButtonLabel({
   isCurrent,
   isPending,
   isLoading,
   planCode,
+  planName,
   checkoutReady,
 }: {
   isCurrent: boolean
   isPending: boolean
   isLoading: boolean
   planCode: string
+  planName: string
   checkoutReady: boolean
 }) {
   if (isCurrent) return "Plano atual"
   if (isLoading) return "Processando..."
   if (!checkoutReady && planCode !== "FREE") return "Indisponivel agora"
   if (isPending) return "Concluir assinatura"
-  return planCode === "FREE" ? "Ficar no Free" : `Escolher ${planCode === "PRO" ? "Pro" : "Starter"}`
+  return planCode === "FREE" ? "Ficar no Free" : `Escolher ${planName}`
 }
 
 export default function BillingClient({
   plans,
   currentPlan,
   planStatus,
+  providerLabel,
+  provider,
 }: {
   plans: Plan[]
   currentPlan: string
   planStatus: string
+  providerLabel: string
+  provider: BillingProvider
 }) {
   const [message, setMessage] = useState("")
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null)
   const { refreshSession } = usePlatformSession()
+  const unavailableMessage = getUnavailableCheckoutMessage(provider, providerLabel)
 
   const handleSelect = async (plan: Plan) => {
-    const checkoutReady = plan.code === "FREE" || !!plan.priceId
+    const checkoutReady = plan.code === "FREE" || provider === "ASAAS" || !!plan.priceId
     if (!checkoutReady) {
-      setMessage("Esse plano ainda nao foi conectado ao Stripe. Configure o price ID antes de liberar a assinatura.")
+      setMessage(unavailableMessage)
       return
     }
 
@@ -75,7 +89,8 @@ export default function BillingClient({
         return
       }
 
-      const res = await fetch("/api/billing/checkout", {
+      const endpoint = provider === "ASAAS" ? "/api/subscription/create-checkout" : "/api/billing/checkout"
+      const res = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ priceId: plan.priceId, plan: plan.code }),
@@ -102,7 +117,7 @@ export default function BillingClient({
           const isSelected = currentPlan === plan.code
           const isCurrent = isSelected && planStatus === "ACTIVE"
           const isPending = isSelected && (planStatus === "CHECKOUT_REQUIRED" || planStatus === "CHECKOUT_PENDING")
-          const checkoutReady = plan.code === "FREE" || !!plan.priceId
+          const checkoutReady = plan.code === "FREE" || provider === "ASAAS" || !!plan.priceId
 
           return (
             <article
@@ -136,7 +151,7 @@ export default function BillingClient({
 
               {!checkoutReady ? (
                 <div className="mt-5 rounded-2xl border border-amber-300/20 bg-amber-500/10 px-4 py-3 text-sm text-amber-50">
-                  Faltando integrar o price ID desse plano no Stripe.
+                  {unavailableMessage}
                 </div>
               ) : null}
 
@@ -154,6 +169,7 @@ export default function BillingClient({
                   isPending,
                   isLoading: loadingPlan === plan.code,
                   planCode: plan.code,
+                  planName: plan.name,
                   checkoutReady,
                 })}
               </button>

@@ -72,6 +72,9 @@
     "[project]/src/app/blog/page": [
       "static/media/0c89a48fa5027cee-s.p.4564287c.woff2"
     ],
+    "[project]/src/app/blog/reels/page": [
+      "static/media/0c89a48fa5027cee-s.p.4564287c.woff2"
+    ],
     "[project]/src/app/calendar/new/page": [
       "static/media/0c89a48fa5027cee-s.p.4564287c.woff2"
     ],
@@ -120,7 +123,13 @@
     "[project]/src/app/estrutura/page": [
       "static/media/0c89a48fa5027cee-s.p.4564287c.woff2"
     ],
+    "[project]/src/app/financeiro/page": [
+      "static/media/0c89a48fa5027cee-s.p.4564287c.woff2"
+    ],
     "[project]/src/app/forum/[id]/page": [
+      "static/media/0c89a48fa5027cee-s.p.4564287c.woff2"
+    ],
+    "[project]/src/app/forum/channels/[slug]/assinar/page": [
       "static/media/0c89a48fa5027cee-s.p.4564287c.woff2"
     ],
     "[project]/src/app/forum/channels/[slug]/page": [
@@ -150,7 +159,19 @@
     "[project]/src/app/profile/page": [
       "static/media/0c89a48fa5027cee-s.p.4564287c.woff2"
     ],
+    "[project]/src/app/racas/[id]/page": [
+      "static/media/0c89a48fa5027cee-s.p.4564287c.woff2"
+    ],
+    "[project]/src/app/racas/comparador/page": [
+      "static/media/0c89a48fa5027cee-s.p.4564287c.woff2"
+    ],
+    "[project]/src/app/racas/ia/page": [
+      "static/media/0c89a48fa5027cee-s.p.4564287c.woff2"
+    ],
     "[project]/src/app/racas/page": [
+      "static/media/0c89a48fa5027cee-s.p.4564287c.woff2"
+    ],
+    "[project]/src/app/racas/radar/page": [
       "static/media/0c89a48fa5027cee-s.p.4564287c.woff2"
     ],
     "[project]/src/app/register/page": [

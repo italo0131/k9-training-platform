@@ -9,33 +9,35 @@ datasource db {
 }
 
 model User {
-  id                String    @id @default(cuid())
-  name              String
-  email             String    @unique
-  password          String
-  role              String    @default("CLIENT")
-  status            String    @default("ACTIVE")
-  plan              String    @default("FREE")
-  planStatus        String    @default("ACTIVE")
-  planActivatedAt   DateTime?
-  headline          String?
-  bio               String?
-  city              String?
-  state             String?
-  specialties       String?
-  experienceYears   Int?
-  availabilityNotes String?
-  websiteUrl        String?
-  instagramHandle   String?
-  companyId         String?
-  company           Company?  @relation(fields: [companyId], references: [id])
-  emailVerifiedAt   DateTime?
-  phone             String?
-  phoneVerifiedAt   DateTime?
-  twoFactorEnabled  Boolean   @default(false)
+  id                  String    @id @default(cuid())
+  name                String
+  email               String    @unique
+  password            String
+  role                String    @default("CLIENT")
+  status              String    @default("ACTIVE")
+  plan                String    @default("FREE")
+  planStatus          String    @default("ACTIVE")
+  planActivatedAt     DateTime?
+  asaasCustomerId     String?   @unique
+  asaasWalletId       String?
+  headline            String?
+  bio                 String?
+  city                String?
+  state               String?
+  specialties         String?
+  experienceYears     Int?
+  availabilityNotes   String?
+  websiteUrl          String?
+  instagramHandle     String?
+  companyId           String?
+  company             Company?  @relation(fields: [companyId], references: [id])
+  emailVerifiedAt     DateTime?
+  phone               String?
+  phoneVerifiedAt     DateTime?
+  twoFactorEnabled    Boolean   @default(false)
   breedAdvisorProfile Json?
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime  @updatedAt
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
 
   dogs                 Dog[]
   schedules            Schedule[]
@@ -51,9 +53,11 @@ model User {
   forumReplies         ForumReply[]          @relation("UserForumReplies")
   coachedTrainings     TrainingSession[]     @relation("TrainingSessionCoach")
   payments             Payment[]
+  subscriptions        Subscription[]        @relation("UserSubscriptions")
+  transactions         Transaction[]         @relation("UserTransactions")
   auditLogs            AuditLog[]
   verificationCodes    VerificationCode[]
-forumPosts ForumPost[] @relation("UserForumPosts")
+  forumPosts           ForumPost[]           @relation("UserForumPosts")
 }
 
 model Company {
@@ -138,46 +142,50 @@ model TrainingSession {
 }
 
 model Schedule {
-  id              String   @id @default(cuid())
-  title           String   @default("Sessao de treino")
+  id              String        @id @default(cuid())
+  title           String        @default("Sessao de treino")
   notes           String?
   location        String?
-  format          String   @default("PRESENTIAL")
+  format          String        @default("PRESENTIAL")
   durationMinutes Int?
   date            DateTime
   status          String
+  price           Int?
+  paymentStatus   String        @default("PENDING")
+  asaasPaymentId  String?       @unique
   userId          String
-  user            User     @relation(fields: [userId], references: [id])
+  user            User          @relation(fields: [userId], references: [id])
   trainerId       String?
-  trainer         User?    @relation("ScheduleTrainer", fields: [trainerId], references: [id])
+  trainer         User?         @relation("ScheduleTrainer", fields: [trainerId], references: [id])
   dogId           String?
-  dog             Dog?     @relation(fields: [dogId], references: [id])
+  dog             Dog?          @relation(fields: [dogId], references: [id])
+  transactions    Transaction[] @relation("ScheduleTransactions")
 }
 
 model BlogPost {
-  id            String    @id @default(cuid())
+  id            String             @id @default(cuid())
   title         String
-  slug          String    @unique
-  category      String    @default("GERAL")
-  postType      String    @default("POST")
-  accessLevel   String    @default("FREE")
+  slug          String             @unique
+  category      String             @default("GERAL")
+  postType      String             @default("POST")
+  accessLevel   String             @default("FREE")
   excerpt       String?
   content       String
   coverImageUrl String?
   videoUrl      String?
-  featured      Boolean   @default(false)
+  featured      Boolean            @default(false)
   eventStartsAt DateTime?
   eventEndsAt   DateTime?
   eventLocation String?
   eventCity     String?
   eventState    String?
-  published     Boolean   @default(true)
+  published     Boolean            @default(true)
   authorId      String
-  author        User      @relation(fields: [authorId], references: [id])
+  author        User               @relation(fields: [authorId], references: [id])
   comments      BlogComment[]
   reactions     BlogPostReaction[]
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
 }
 
 model Payment {
@@ -207,41 +215,111 @@ model AuditLog {
 }
 
 model ForumChannel {
-  id                String                @id @default(cuid())
-  slug              String                @unique
-  name              String
-  description       String
-  category          String                @default("COMUNIDADE")
-  serviceMode       String                @default("COMMUNITY")
-  subscriptionPrice Int?
-  onlinePrice       Int?
-  inPersonPrice     Int?
-  city              String?
-  state             String?
-  acceptsRemote     Boolean               @default(false)
-  isPublic          Boolean               @default(true)
-  featured          Boolean               @default(false)
-  ownerId           String
-  owner             User                  @relation("ForumChannelOwner", fields: [ownerId], references: [id])
-  subscriptions     ChannelSubscription[]
-  contents          ChannelContent[]
-  threads           ForumThread[]
-  createdAt         DateTime              @default(now())
-  updatedAt         DateTime              @updatedAt
+  id                   String                @id @default(cuid())
+  slug                 String                @unique
+  name                 String
+  description          String
+  category             String                @default("COMUNIDADE")
+  serviceMode          String                @default("COMMUNITY")
+  subscriptionPrice    Int?
+  onlinePrice          Int?
+  inPersonPrice        Int?
+  city                 String?
+  state                String?
+  acceptsRemote        Boolean               @default(false)
+  isPublic             Boolean               @default(true)
+  featured             Boolean               @default(false)
+  ownerId              String
+  owner                User                  @relation("ForumChannelOwner", fields: [ownerId], references: [id])
+  subscriptions        ChannelSubscription[]
+  billingSubscriptions Subscription[]        @relation("ForumChannelSubscriptions")
+  contents             ChannelContent[]
+  threads              ForumThread[]
+  transactions         Transaction[]         @relation("ForumChannelTransactions")
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime              @updatedAt
 }
 
 model ChannelSubscription {
-  id        String       @id @default(cuid())
-  status    String       @default("ACTIVE")
-  tier      String       @default("FREE")
-  startedAt DateTime     @default(now())
-  endedAt   DateTime?
-  channelId String
-  channel   ForumChannel @relation(fields: [channelId], references: [id])
-  userId    String
-  user      User         @relation(fields: [userId], references: [id])
+  id                  String        @id @default(cuid())
+  status              String        @default("ACTIVE")
+  tier                String        @default("FREE")
+  paymentStatus       String        @default("PENDING")
+  asaasCheckoutId     String?       @unique
+  asaasSubscriptionId String?       @unique
+  asaasPaymentId      String?
+  startedAt           DateTime      @default(now())
+  endedAt             DateTime?
+  channelId           String
+  channel             ForumChannel  @relation(fields: [channelId], references: [id])
+  userId              String
+  user                User          @relation(fields: [userId], references: [id])
+  billingSubscription Subscription? @relation("ChannelSubscriptionBilling")
 
   @@unique([channelId, userId])
+}
+
+model Subscription {
+  id                    String               @id @default(cuid())
+  provider              String               @default("ASAAS")
+  externalReference     String               @unique
+  planType              String
+  planCode              String?
+  billingCycle          String?
+  status                String               @default("PENDING")
+  checkoutStatus        String?
+  paymentStatus         String?
+  amount                Int
+  commissionAmount      Int                  @default(0)
+  netAmount             Int?
+  asaasCustomerId       String?
+  asaasCheckoutId       String?              @unique
+  asaasSubscriptionId   String?              @unique
+  asaasPaymentId        String?
+  startAt               DateTime?
+  endAt                 DateTime?
+  metadata              Json?
+  userId                String
+  user                  User                 @relation("UserSubscriptions", fields: [userId], references: [id])
+  channelId             String?
+  channel               ForumChannel?        @relation("ForumChannelSubscriptions", fields: [channelId], references: [id])
+  channelSubscriptionId String?              @unique
+  channelSubscription   ChannelSubscription? @relation("ChannelSubscriptionBilling", fields: [channelSubscriptionId], references: [id])
+  transactions          Transaction[]
+  createdAt             DateTime             @default(now())
+  updatedAt             DateTime             @updatedAt
+
+  @@index([userId, planType, status])
+  @@index([channelId, status])
+}
+
+model Transaction {
+  id                     String        @id @default(cuid())
+  provider               String        @default("ASAAS")
+  providerEventId        String?       @unique
+  externalPaymentId      String?       @unique
+  externalSubscriptionId String?
+  type                   String
+  status                 String
+  grossAmount            Int?
+  feeAmount              Int?
+  netAmount              Int?
+  currency               String?
+  description            String?
+  raw                    Json?
+  userId                 String?
+  user                   User?         @relation("UserTransactions", fields: [userId], references: [id])
+  channelId              String?
+  channel                ForumChannel? @relation("ForumChannelTransactions", fields: [channelId], references: [id])
+  scheduleId             String?
+  schedule               Schedule?     @relation("ScheduleTransactions", fields: [scheduleId], references: [id])
+  subscriptionId         String?
+  subscription           Subscription? @relation(fields: [subscriptionId], references: [id])
+  createdAt              DateTime      @default(now())
+  updatedAt              DateTime      @updatedAt
+
+  @@index([externalSubscriptionId])
+  @@index([subscriptionId, type])
 }
 
 model ChannelContent {
@@ -267,6 +345,7 @@ model ChannelContent {
   createdAt       DateTime     @default(now())
   updatedAt       DateTime     @updatedAt
 }
+
 model ForumPost {
   id        String      @id @default(cuid())
   content   String
@@ -277,12 +356,11 @@ model ForumPost {
   createdAt DateTime    @default(now())
 }
 
-
 model ForumThread {
-  id            String        @id @default(cuid())
+  id            String                @id @default(cuid())
   title         String
   content       String
-  postType      String        @default("POST")
+  postType      String                @default("POST")
   imageUrl      String?
   videoUrl      String?
   eventStartsAt DateTime?
@@ -291,15 +369,15 @@ model ForumThread {
   eventCity     String?
   eventState    String?
   channelId     String?
-  channel       ForumChannel? @relation(fields: [channelId], references: [id])
-  isPinned      Boolean       @default(false)
+  channel       ForumChannel?         @relation(fields: [channelId], references: [id])
+  isPinned      Boolean               @default(false)
   authorId      String
-  author        User          @relation("UserForumThreads", fields: [authorId], references: [id])
+  author        User                  @relation("UserForumThreads", fields: [authorId], references: [id])
   replies       ForumReply[]
   reactions     ForumThreadReaction[]
-  posts         ForumPost[]   // <-- ADICIONE ESTA LINHA
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
+  posts         ForumPost[] // <-- ADICIONE ESTA LINHA
+  createdAt     DateTime              @default(now())
+  updatedAt     DateTime              @updatedAt
 }
 
 model ForumReply {

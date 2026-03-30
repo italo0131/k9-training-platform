@@ -1,8 +1,8 @@
 'use client';
 
-import { useSession } from 'next-auth/react';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useAuth } from '@/app/hooks/useAuth';
 
 interface DeletePostButtonProps {
   postId: string;
@@ -17,11 +17,11 @@ export default function DeletePostButton({
   postType,
   onDelete,
 }: DeletePostButtonProps) {
-  const { data: session } = useSession();
+  const { user } = useAuth();
   const [isDeleting, setIsDeleting] = useState(false);
   const router = useRouter();
 
-  if (!session?.user || session.user.id !== authorId) {
+  if (!user || user.id !== authorId) {
     return null; // não mostra o botão para quem não é o autor
   }
 

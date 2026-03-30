@@ -3,16 +3,31 @@
 import Link from "next/link"
 import { type FormEvent, useEffect, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
-import { useSession } from "next-auth/react"
 
 import { useAppToast } from "@/app/components/AppToastProvider"
+import { usePlatformSession } from "@/app/components/PlatformSessionProvider"
 import Skeleton from "@/app/components/ui/Skeleton"
 import { getAccountPlanLabel } from "@/lib/platform"
+
+type ProfilePayload = {
+  message?: string
+  user?: {
+    email?: string
+    phone?: string | null
+    plan?: string | null
+    planStatus?: string | null
+    emailVerifiedAt?: string | null
+    phoneVerifiedAt?: string | null
+  }
+  stats?: {
+    dogs?: number
+  }
+}
 
 export default function VerifyPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const { status: sessionStatus, update } = useSession()
+  const { status: sessionStatus, refreshSession } = usePlatformSession()
   const { pushToast } = useAppToast()
 
   const [email, setEmail] = useState("")
@@ -27,6 +42,9 @@ export default function VerifyPage() {
   const [emailVerifiedAt, setEmailVerifiedAt] = useState<string | null>(null)
   const [phoneVerifiedAt, setPhoneVerifiedAt] = useState<string | null>(null)
   const [phone, setPhone] = useState<string | null>(null)
+  const [planCode, setPlanCode] = useState("FREE")
+  const [planStatus, setPlanStatus] = useState("ACTIVE")
+  const [dogsCount, setDogsCount] = useState(0)
   const [emailCooldown, setEmailCooldown] = useState(0)
   const [phoneCooldown, setPhoneCooldown] = useState(0)
 
@@ -34,19 +52,46 @@ export default function VerifyPage() {
   const selectedPlan = searchParams.get("plan")
   const emailCodeFromUrl = (searchParams.get("emailCode") || searchParams.get("code") || "").trim()
   const shouldAutoConfirm = searchParams.get("auto") === "1" || !!emailCodeFromUrl
+  const effectivePlan = String(selectedPlan || planCode || "FREE").toUpperCase()
+  const needsBilling = !!emailVerifiedAt && effectivePlan !== "FREE" && planStatus !== "ACTIVE"
+  const shouldCreateFirstDog = !!emailVerifiedAt && !needsBilling && dogsCount === 0
+  const primaryJourneyHref = !emailVerifiedAt
+    ? "/verify#email-code"
+    : needsBilling
+      ? "/billing"
+      : shouldCreateFirstDog
+        ? "/dogs/new"
+        : "/dashboard"
+  const primaryJourneyLabel = !emailVerifiedAt
+    ? "Confirmar email"
+    : needsBilling
+      ? `Continuar para assinatura ${getAccountPlanLabel(effectivePlan)}`
+      : shouldCreateFirstDog
+        ? "Cadastrar meu primeiro cao"
+        : "Ir para o dashboard"
+  const journeyDescription = !emailVerifiedAt
+    ? "A primeira liberacao real da conta acontece quando o email e confirmado."
+    : needsBilling
+      ? "Com o email confirmado, falta so concluir a assinatura para liberar toda a experiencia."
+      : shouldCreateFirstDog
+        ? "Sua conta ja esta pronta. Agora vale cadastrar o primeiro cao para personalizar o resto da jornada."
+        : "Conta validada e pronta para seguir com treinos, conteudos, agenda e comunidade."
 
   useEffect(() => {
     async function load() {
       try {
         const res = await fetch("/api/profile")
         const text = await res.text()
-        const data = text ? JSON.parse(text) : null
+        const data = (text ? JSON.parse(text) : null) as ProfilePayload | null
 
         if (data?.user) {
-          setEmail(data.user.email)
+          setEmail(String(data.user.email || ""))
           setPhone(data.user.phone || null)
           setEmailVerifiedAt(data.user.emailVerifiedAt || null)
           setPhoneVerifiedAt(data.user.phoneVerifiedAt || null)
+          setPlanCode(String(data.user.plan || "FREE").toUpperCase())
+          setPlanStatus(String(data.user.planStatus || "ACTIVE").toUpperCase())
+          setDogsCount(Number(data.stats?.dogs || 0))
           if (emailCodeFromUrl) {
             setEmailCode(emailCodeFromUrl)
           }
@@ -140,7 +185,7 @@ export default function VerifyPage() {
       if (res.ok && data?.success) {
         setEmailVerifiedAt(new Date().toISOString())
         setEmailCode("")
-        await update()
+        await refreshSession()
         router.refresh()
       }
 
@@ -304,6 +349,33 @@ export default function VerifyPage() {
           </section>
         )}
 
+        <section className="grid gap-4 md:grid-cols-4">
+          <JourneyCard
+            step="01"
+            title="Conta criada"
+            description="Seu acesso ja existe e a sessao esta pronta para seguir."
+            complete
+          />
+          <JourneyCard
+            step="02"
+            title="Email protegido"
+            description="Essa etapa libera a conta com mais confianca."
+            complete={!!emailVerifiedAt}
+          />
+          <JourneyCard
+            step="03"
+            title={effectivePlan === "FREE" ? "Plano Free ativo" : `Plano ${getAccountPlanLabel(effectivePlan)}`}
+            description={effectivePlan === "FREE" ? "No Free voce ja pode comecar." : "Plano pago precisa de checkout concluido para ficar ativo."}
+            complete={effectivePlan === "FREE" || planStatus === "ACTIVE"}
+          />
+          <JourneyCard
+            step="04"
+            title="Primeiro cao"
+            description="Com o primeiro cao cadastrado, a plataforma fica muito mais personalizada."
+            complete={dogsCount > 0}
+          />
+        </section>
+
         <section className="grid gap-4 md:grid-cols-2">
           <form className="surface-card rounded-[28px] p-6" onSubmit={(event) => {
             event.preventDefault()
@@ -328,10 +400,10 @@ export default function VerifyPage() {
             />
             <button
               type="submit"
-              disabled={confirmingEmail}
+              disabled={confirmingEmail || !!emailVerifiedAt}
               className="interactive-button mt-4 rounded-2xl bg-[linear-gradient(135deg,#06b6d4,#10b981)] px-4 py-3 font-semibold text-white shadow-lg shadow-cyan-500/20 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {confirmingEmail ? "Confirmando com seguranca..." : "Confirmar meu email"}
+              {emailVerifiedAt ? "Email ja confirmado" : confirmingEmail ? "Confirmando com seguranca..." : "Confirmar meu email"}
             </button>
           </form>
 
@@ -355,10 +427,10 @@ export default function VerifyPage() {
             />
             <button
               type="submit"
-              disabled={confirmingPhone}
+              disabled={confirmingPhone || !!phoneVerifiedAt}
               className="interactive-button mt-4 rounded-2xl border border-white/15 px-4 py-3 font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {confirmingPhone ? "Confirmando..." : "Confirmar meu telefone"}
+              {phoneVerifiedAt ? "Telefone ja confirmado" : confirmingPhone ? "Confirmando..." : "Confirmar meu telefone"}
             </button>
           </form>
         </section>
@@ -376,15 +448,27 @@ export default function VerifyPage() {
         ) : null}
 
         <section className="surface-card rounded-[28px] p-6">
+          <div className="mb-5 rounded-[24px] border border-emerald-300/15 bg-emerald-500/10 p-4">
+            <p className="text-xs uppercase tracking-[0.2em] text-emerald-100/80">Proximo passo guiado</p>
+            <p className="mt-2 text-xl font-semibold text-white">{primaryJourneyLabel}</p>
+            <p className="mt-2 text-sm leading-7 text-emerald-50/90">{journeyDescription}</p>
+          </div>
           <div className="flex flex-wrap gap-3">
-            {nextStep === "billing" ? (
+            {emailVerifiedAt && (nextStep === "billing" || needsBilling) ? (
               <button
                 onClick={() => router.push("/billing")}
                 className="interactive-button rounded-2xl bg-[linear-gradient(135deg,#06b6d4,#10b981)] px-4 py-3 font-semibold text-white"
               >
                 Seguir para assinatura
               </button>
-            ) : null}
+            ) : (
+              <button
+                onClick={() => router.push(primaryJourneyHref)}
+                className="interactive-button rounded-2xl bg-[linear-gradient(135deg,#06b6d4,#10b981)] px-4 py-3 font-semibold text-white"
+              >
+                {primaryJourneyLabel}
+              </button>
+            )}
             <button
               onClick={() => router.push("/dashboard")}
               className="interactive-button rounded-2xl border border-white/15 px-4 py-3 text-gray-100"
@@ -451,6 +535,29 @@ function StatusCard({
           </Link>
         ) : null}
       </div>
+    </div>
+  )
+}
+
+function JourneyCard({
+  step,
+  title,
+  description,
+  complete,
+}: {
+  step: string
+  title: string
+  description: string
+  complete?: boolean
+}) {
+  return (
+    <div className={`rounded-[24px] border p-5 ${complete ? "border-emerald-300/20 bg-emerald-500/10" : "border-white/10 bg-white/5"}`}>
+      <p className="text-xs uppercase tracking-[0.2em] text-cyan-200/80">Etapa {step}</p>
+      <h3 className="mt-2 text-lg font-semibold text-white">{title}</h3>
+      <p className="mt-2 text-sm leading-6 text-slate-300">{description}</p>
+      <p className={`mt-3 text-xs uppercase tracking-[0.2em] ${complete ? "text-emerald-100" : "text-amber-200"}`}>
+        {complete ? "Concluida" : "Em andamento"}
+      </p>
     </div>
   )
 }

@@ -1,94 +1,42 @@
-"use client";
+import Link from "next/link"
+import { ArrowLeft, Radar } from "lucide-react"
 
-import { useState, useEffect } from "react";
-import { getDogBreedCatalog } from "@/lib/thedogapi";
-import { buildBreedStudyProfile, type BreedStudyProfile } from "@/lib/breed-study";
-import { getBreedImageUrl } from "@/lib/breed-search";
-import { normalizeBreedLifestyleForm, DEFAULT_BREED_LIFESTYLE, scoreBreedMatch } from "@/lib/breed-match";
-import { Radar } from "lucide-react";
+import BreedExplorer from "@/app/racas/BreedExplorer"
+import { loadBreedExplorerProfiles } from "@/app/racas/explorer-data"
 
-export default function RadarPage() {
-  const [profiles, setProfiles] = useState<BreedStudyProfile[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [lifestyle, setLifestyle] = useState(DEFAULT_BREED_LIFESTYLE);
+export const revalidate = 21600
 
-  useEffect(() => {
-    const fetchBreeds = async () => {
-      try {
-        const { breeds } = await getDogBreedCatalog(200);
-        const mapped = breeds.map((breed) =>
-          buildBreedStudyProfile({
-            ...breed,
-            referenceImageUrl: getBreedImageUrl(breed.name, breed.referenceImageUrl),
-          })
-        );
-        setProfiles(mapped);
-      } catch (error) {
-        console.error("Erro ao carregar raças:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchBreeds();
-  }, []);
-
-  const ranked = profiles
-    .map((profile) => ({
-      ...profile,
-      match: scoreBreedMatch(profile, lifestyle),
-    }))
-    .sort((a, b) => b.match.score - a.match.score)
-    .slice(0, 10);
+export default async function RadarPage() {
+  const { profiles, errorMessage } = await loadBreedExplorerProfiles(36)
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-950 to-slate-900 text-white py-10 px-4">
-      <div className="max-w-4xl mx-auto">
-        <h1 className="text-3xl font-bold mb-6 flex items-center gap-2">
-          <Radar className="h-8 w-8" /> Radar de Encaixe
-        </h1>
-        <p className="mb-6 text-slate-300">
-          Preencha as informações sobre sua rotina e descubra as raças mais compatíveis com seu estilo de vida.
-        </p>
+    <div className="min-h-[100svh] bg-[radial-gradient(circle_at_top,rgba(34,211,238,0.14),transparent_26%),radial-gradient(circle_at_80%_20%,rgba(244,114,182,0.12),transparent_24%),linear-gradient(145deg,#020617,#08111f_45%,#020617)] px-4 py-8 text-white sm:px-6">
+      <div className="mx-auto max-w-7xl space-y-8">
+        <section className="rounded-[34px] border border-white/10 bg-[linear-gradient(135deg,rgba(8,47,73,0.92),rgba(15,23,42,0.94)_52%,rgba(6,78,59,0.68)),radial-gradient(circle_at_top_right,rgba(34,211,238,0.18),transparent_30%)] p-6 md:p-8">
+          <Link
+            href="/racas"
+            className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm text-cyan-100 transition hover:-translate-y-0.5 hover:bg-white/10"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            <span>Voltar para raças</span>
+          </Link>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-          <select
-              value={lifestyle.livingSpace}
-              onChange={(e) => setLifestyle({ ...lifestyle, livingSpace: e.target.value as any })}
-              className="rounded-2xl border border-white/10 bg-white/5 p-3"
-            >
-              <option value="APARTAMENTO">Apartamento</option>
-              <option value="CASA_COMPACTA">Casa compacta</option>
-              <option value="CASA_COM_QUINTAL">Casa com quintal</option>
-              <option value="AREA_ABERTA">Área aberta</option>
-            </select>
-            <select
-              value={lifestyle.routine}
-              onChange={(e) => setLifestyle({ ...lifestyle, routine: e.target.value as any })}
-              className="rounded-2xl border border-white/10 bg-white/5 p-3"
-            >
-              <option value="work">Trabalho fora</option>
-              <option value="home">Home office</option>
-            <option value="active">Muito tempo livre</option>
-          </select>
-          {/* Adicione mais campos conforme necessário */}
-        </div>
-
-        {loading ? (
-          <div className="text-center">Carregando...</div>
-        ) : (
-          <div className="space-y-4">
-            {ranked.map((profile, idx) => (
-              <div key={profile.breed.id} className="bg-white/5 border border-white/10 rounded-2xl p-4 flex justify-between items-center">
-                <div>
-                  <span className="font-bold text-lg">{idx+1}. {profile.breed.name}</span>
-                  <p className="text-sm text-slate-400">{profile.groupLabel}</p>
-                </div>
-                <div className="text-cyan-400 font-bold">{profile.match.score}/100</div>
-              </div>
-            ))}
+          <div className="mt-6 max-w-4xl space-y-4">
+            <div className="inline-flex items-center gap-2 rounded-full border border-cyan-300/20 bg-cyan-500/10 px-3 py-1 text-xs uppercase tracking-[0.2em] text-cyan-100">
+              <Radar className="h-3.5 w-3.5" />
+              <span>Radar de encaixe</span>
+            </div>
+            <h1 className="text-4xl font-semibold leading-tight md:text-5xl">
+              Descubra quais raças combinam melhor com sua vida real
+            </h1>
+            <p className="text-base leading-7 text-slate-200 md:text-lg">
+              Preencha sua rotina, espaço, objetivo e nível de experiência. O radar faz a leitura e já organiza as melhores opções para você comparar.
+            </p>
           </div>
-        )}
+        </section>
+
+        <BreedExplorer profiles={profiles} errorMessage={errorMessage} pageTitle="Radar de encaixe" />
       </div>
     </div>
-  );
+  )
 }

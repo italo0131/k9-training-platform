@@ -5,6 +5,7 @@ import { motion } from "framer-motion"
 import { ArrowRight, BrainCircuit, CheckCircle2, Dog, LoaderCircle, Radar, Sparkles } from "lucide-react"
 import { useEffect, useState, useTransition } from "react"
 
+import { usePlatformSession } from "@/app/components/PlatformSessionProvider"
 import MotionReveal from "@/app/components/ui/MotionReveal"
 import Skeleton from "@/app/components/ui/Skeleton"
 
@@ -87,6 +88,8 @@ const SELECT_FIELDS: Array<{
 ]
 
 export default function BreedExplorer({ profiles, errorMessage, pageTitle }: Props) {
+  const { isLoggedIn, isLoading } = usePlatformSession()
+  const guestProfileNotice = "Entre na conta para salvar seu contexto e deixar a IA mais precisa nas proximas consultas."
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const [lifestyle, setLifestyle] = useState<BreedLifestyleForm>(DEFAULT_BREED_LIFESTYLE)
   const [advisorText, setAdvisorText] = useState("")
@@ -100,8 +103,13 @@ export default function BreedExplorer({ profiles, errorMessage, pageTitle }: Pro
   const [profileName, setProfileName] = useState("")
   const [isPending, startTransition] = useTransition()
   const [isSavingProfile, startSavingProfile] = useTransition()
+  const effectiveProfileState = isLoading ? "loading" : isLoggedIn ? profileState : "guest"
+  const effectiveProfileNotice = !isLoading && !isLoggedIn ? guestProfileNotice : profileNotice
 
   useEffect(() => {
+    if (isLoading) return
+    if (!isLoggedIn) return
+
     let active = true
 
     fetch("/api/profile", { credentials: "same-origin" })
@@ -140,7 +148,7 @@ export default function BreedExplorer({ profiles, errorMessage, pageTitle }: Pro
     return () => {
       active = false
     }
-  }, [])
+  }, [isLoggedIn, isLoading])
 
   const rankedProfiles = profiles
     .map((profile) => ({
@@ -191,7 +199,7 @@ export default function BreedExplorer({ profiles, errorMessage, pageTitle }: Pro
   }
 
   function saveProfileContext() {
-    if (profileState !== "ready") {
+    if (effectiveProfileState !== "ready") {
       setProfileNotice("Entre na conta para salvar este contexto e reutiliza-lo nas proximas consultas.")
       return
     }
@@ -284,24 +292,24 @@ export default function BreedExplorer({ profiles, errorMessage, pageTitle }: Pro
 
             <div className="mt-5 rounded-[24px] border border-white/10 bg-black/15 p-4 text-sm text-slate-200">
               <p className="font-medium text-white">
-                {profileState === "ready"
+                {effectiveProfileState === "ready"
                   ? `Perfil conectado${profileName ? `: ${profileName}` : ""}`
-                  : profileState === "guest"
+                  : effectiveProfileState === "guest"
                     ? "Modo visitante"
                     : "Carregando perfil"}
               </p>
-              <p className="mt-2 text-slate-300">{profileNotice}</p>
+              <p className="mt-2 text-slate-300">{effectiveProfileNotice}</p>
               <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
                 <button
                   type="button"
                   onClick={saveProfileContext}
-                  disabled={profileState !== "ready" || isSavingProfile}
+                  disabled={effectiveProfileState !== "ready" || isSavingProfile}
                   className="interactive-button flex min-h-[48px] items-center justify-center gap-2 rounded-2xl border border-white/15 bg-white/5 px-4 py-3 text-sm font-medium text-white transition-all duration-200 hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {isSavingProfile ? <LoaderCircle className="h-4 w-4 animate-spin" aria-hidden="true" /> : <CheckCircle2 className="h-4 w-4" aria-hidden="true" />}
                   <span>{isSavingProfile ? "Salvando contexto..." : "Salvar contexto no meu perfil"}</span>
                 </button>
-                {profileState !== "ready" ? (
+                {effectiveProfileState !== "ready" ? (
                   <Link
                     href="/login"
                     className="interactive-button flex min-h-[48px] items-center justify-center rounded-2xl border border-cyan-300/20 bg-cyan-500/10 px-4 py-3 text-sm font-medium text-cyan-100 transition-all duration-200 hover:bg-cyan-500/20"
@@ -600,7 +608,7 @@ export default function BreedExplorer({ profiles, errorMessage, pageTitle }: Pro
           {selectedProfiles.length === 0 ? (
             <div className="mt-5 rounded-2xl border border-dashed border-white/15 bg-white/5 p-5 text-slate-300">
               <p>
-                Use o botao "Comparar" nos cards abaixo para montar uma mesa de decisao com porte, energia, treino, rotina
+                Use o botao &quot;Comparar&quot; nos cards abaixo para montar uma mesa de decisao com porte, energia, treino, rotina
                 ideal e pontos de atencao.
               </p>
               <button

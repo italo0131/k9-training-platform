@@ -7,17 +7,21 @@ import type { Session } from "next-auth"
 import { authOptions } from "../auth/[...nextauth]/route"
 import { createVerificationCode } from "@/lib/verification"
 import { sendVerifyEmail } from "@/lib/email"
-import { rejectIfCrossOrigin, rejectIfRateLimited } from "@/lib/security"
+import {
+  coerceNonNegativeInteger,
+  getPasswordValidationError,
+  normalizeEmailInput,
+  normalizeTextInput,
+  normalizeUrlInput,
+  rejectIfCrossOrigin,
+  rejectIfRateLimited,
+} from "@/lib/security"
 import { normalizeBreedLifestyleForm, type BreedLifestyleForm } from "@/lib/breed-match"
 
 function hashPassword(password: string) {
   const salt = randomBytes(16).toString("hex")
   const derived = scryptSync(password, salt, 64).toString("hex")
   return `scrypt:${salt}:${derived}`
-}
-
-function normalizeEmail(email: string) {
-  return email.trim().toLowerCase()
 }
 
 function verifyPassword(stored: string, input: string) {
@@ -40,7 +44,7 @@ function normalizeAdvisorProfile(value: unknown): BreedLifestyleForm | null {
 }
 
 export async function GET() {
-  const session = (await getServerSession(authOptions as any)) as Session | null
+  const session = (await getServerSession(authOptions)) as Session | null
   if (!session?.user?.id) return NextResponse.json({ success: false, message: "Sem sessão" }, { status: 401 })
 
   const user = await prisma.user.findUnique({
@@ -110,10 +114,10 @@ export async function PATCH(req: Request) {
     )
     if (rateLimitError) return rateLimitError
 
-    const session = (await getServerSession(authOptions as any)) as Session | null
+    const session = (await getServerSession(authOptions)) as Session | null
     if (!session?.user?.id) return NextResponse.json({ success: false, message: "Sem sessão" }, { status: 401 })
 
-    const data = await req.json()
+    const data = await req.json().catch(() => ({}))
     const user = await prisma.user.findUnique({ where: { id: session.user.id } })
 
     if (!user) {
@@ -122,6 +126,7 @@ export async function PATCH(req: Request) {
 
     const wantsEmailChange = data.email && data.email !== user.email
     const wantsPasswordChange = !!data.password
+    const passwordError = wantsPasswordChange ? getPasswordValidationError(data.password) : null
 
     if (wantsEmailChange || wantsPasswordChange) {
       if (!data.currentPassword) {
@@ -135,6 +140,10 @@ export async function PATCH(req: Request) {
       if (!valid) {
         return NextResponse.json({ success: false, message: "Senha atual incorreta" }, { status: 401 })
       }
+    }
+
+    if (passwordError) {
+      return NextResponse.json({ success: false, message: passwordError }, { status: 400 })
     }
 
     const payload: {
@@ -157,28 +166,38 @@ export async function PATCH(req: Request) {
       breedAdvisorProfile?: Prisma.InputJsonValue | Prisma.NullableJsonNullValueInput
     } = {}
 
-    if (data.name) payload.name = data.name
+    if (typeof data.name !== "undefined") {
+      const normalizedName = normalizeTextInput(data.name, 120)
+      if (!normalizedName) {
+        return NextResponse.json({ success: false, message: "Informe um nome valido para atualizar o perfil." }, { status: 400 })
+      }
+      payload.name = normalizedName
+    }
     if (wantsEmailChange) {
-      payload.email = normalizeEmail(data.email)
+      const normalizedEmail = normalizeEmailInput(data.email)
+      if (!normalizedEmail) {
+        return NextResponse.json({ success: false, message: "Informe um email valido para concluir a alteracao." }, { status: 400 })
+      }
+      payload.email = normalizedEmail
       payload.emailVerifiedAt = null
     }
     if (typeof data.phone !== "undefined") {
-      const normalizedPhone = data.phone?.trim() || null
+      const normalizedPhone = normalizeTextInput(data.phone, 32)
       payload.phone = normalizedPhone
       if (normalizedPhone !== (user.phone || null)) payload.phoneVerifiedAt = null
     }
     if (typeof data.twoFactorEnabled !== "undefined") payload.twoFactorEnabled = !!data.twoFactorEnabled
-    if (typeof data.headline !== "undefined") payload.headline = data.headline?.trim() || null
-    if (typeof data.bio !== "undefined") payload.bio = data.bio?.trim() || null
-    if (typeof data.city !== "undefined") payload.city = data.city?.trim() || null
-    if (typeof data.state !== "undefined") payload.state = data.state?.trim() || null
-    if (typeof data.specialties !== "undefined") payload.specialties = data.specialties?.trim() || null
+    if (typeof data.headline !== "undefined") payload.headline = normalizeTextInput(data.headline, 140)
+    if (typeof data.bio !== "undefined") payload.bio = normalizeTextInput(data.bio, 600)
+    if (typeof data.city !== "undefined") payload.city = normalizeTextInput(data.city, 80)
+    if (typeof data.state !== "undefined") payload.state = normalizeTextInput(data.state, 80)
+    if (typeof data.specialties !== "undefined") payload.specialties = normalizeTextInput(data.specialties, 240)
     if (typeof data.experienceYears !== "undefined") {
-      payload.experienceYears = data.experienceYears ? Math.max(0, Number(data.experienceYears)) : null
+      payload.experienceYears = coerceNonNegativeInteger(data.experienceYears, 80)
     }
-    if (typeof data.availabilityNotes !== "undefined") payload.availabilityNotes = data.availabilityNotes?.trim() || null
-    if (typeof data.websiteUrl !== "undefined") payload.websiteUrl = data.websiteUrl?.trim() || null
-    if (typeof data.instagramHandle !== "undefined") payload.instagramHandle = data.instagramHandle?.trim() || null
+    if (typeof data.availabilityNotes !== "undefined") payload.availabilityNotes = normalizeTextInput(data.availabilityNotes, 500)
+    if (typeof data.websiteUrl !== "undefined") payload.websiteUrl = normalizeUrlInput(data.websiteUrl, 240)
+    if (typeof data.instagramHandle !== "undefined") payload.instagramHandle = normalizeTextInput(data.instagramHandle, 80)
     if (typeof data.breedAdvisorProfile !== "undefined") {
       const normalizedProfile = normalizeAdvisorProfile(data.breedAdvisorProfile)
       payload.breedAdvisorProfile = normalizedProfile ? (normalizedProfile as Prisma.InputJsonValue) : Prisma.DbNull

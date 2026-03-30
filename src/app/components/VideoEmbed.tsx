@@ -3,17 +3,39 @@ import { getVideoPresentation } from "@/lib/video"
 type Props = {
   url?: string | null
   title: string
+  variant?: "default" | "reel"
+  autoPlay?: boolean
+  muted?: boolean
+  loop?: boolean
+  poster?: string | null
 }
 
-export default function VideoEmbed({ url, title }: Props) {
+export default function VideoEmbed({
+  url,
+  title,
+  variant = "default",
+  autoPlay = false,
+  muted = false,
+  loop = false,
+  poster,
+}: Props) {
   const video = getVideoPresentation(url)
+  const isReel = variant === "reel"
 
   if (!video) return null
 
   if (video.kind === "direct") {
     return (
       <div className="overflow-hidden rounded-[28px] border border-white/10 bg-slate-950/80 shadow-xl">
-        <video controls className="h-full max-h-[520px] w-full bg-black">
+        <video
+          controls
+          autoPlay={autoPlay}
+          muted={muted || autoPlay}
+          loop={loop || autoPlay}
+          playsInline
+          poster={poster || undefined}
+          className={`w-full bg-black ${isReel ? "aspect-[9/16] object-contain" : "h-full max-h-[520px]"}`}
+        >
           <source src={video.src} />
           Seu navegador nao suporta reproducao de video.
         </video>
@@ -24,7 +46,7 @@ export default function VideoEmbed({ url, title }: Props) {
   if (video.kind === "embed") {
     return (
       <div className="overflow-hidden rounded-[28px] border border-white/10 bg-slate-950/80 shadow-xl">
-        <div className="aspect-video">
+        <div className={isReel ? "aspect-[9/16]" : "aspect-video"}>
           <iframe
             src={video.src}
             title={title}
